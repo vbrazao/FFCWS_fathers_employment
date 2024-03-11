@@ -1,0 +1,505 @@
+---
+title: "Father's Analysis - Multiverse report"
+format: docx
+editor: visual
+execute:
+  echo: false
+bibliography: references.bib
+csl: apa.csl
+---
+
+```{r}
+#| warning: false
+#| message: false
+
+# packages ----------------------------------------------------------------
+packages <- c("tidyverse", "here", "rempsyc", "cowplot")
+groundhog_day <- "2024-01-11"
+
+# (install and) load package versions available on the specified day to try
+# to ensure reproducibility
+
+library(groundhog)
+
+groundhog::meta.groundhog(groundhog_day)
+
+groundhog::groundhog.library(pkg = packages, date = groundhog_day)
+
+```
+
+To arrive at our main results, we had to make many decisions that were not fully justified by theoretical or statistical considerations --- other competent researchers could have chosen differently and justified their choices equally well. To illustrate the variety of choices we made and examine the robustness of our results to these choices, we conducted a multiverse analysis, reported in this document. A multiverse analysis involves specifying different choice points in the preparation and analysis of data with respect to some question and running and reporting all analyses rather than a single path [@steegen2016]. In this document, we first describe the analysis options that comprise our multiverse analysis, then describe some conclusions based on the analysis, and finally present the multiverse results in several graphs.
+
+# Analysis options
+
+## Model for proportions
+
+Our moderation analysis relies on models which predict a proportion (the mother's IPV score, which can range from 0 to 24 when considering all items, and which can be turned into a proportion by dividing the score by the maximum possible score). This type of data is often modelled with a binomial GLM, where the outcome is the proportion itself, and a \`weights\` argument specifies how many "trials" the proportion is out of or, in our case, the maximum possible score.
+
+Another option is to use a "linear probability model", which just means to model a proportion (which necessarily cannot be smaller than 0 or greater than 1) as if it was normally distributed (which by definition is continuous and encompasses the entire real number line). These models come with advantages (e.g., interpretability of coefficients, ease of computation of mediation effects) and disadvantages (e.g., possibility of predicting data points outside the accepted range). In keeping with common practice for the Future of Families dataset, and because of the additional arbitrariness of binarizing these variables, our main manuscript reports the linear analysis. To complement our linear analysis, we also ran logistic regressions after first binarizing the variables. Binary IPV was 0 if the index was 0 and 1 if the index was above 0, and the same logic was applied to the IPV subscales.
+
+Thus, we used three different models for proportions in this multiverse analysis: "binomial" (corresponding to a weighted logit regression), "continuous" (corresponding to a linear regression), and "binary" (corresponding to a logit regression on the binarized IPV index).
+
+## Missing data
+
+One way to deal with missing data in the Future of Families dataset is by analysing only complete cases. However, this approach can result in a big loss of information and less precise estimates. Thus, we used a dataset where missing values were imputed using the \`missForest\` algorithm for our main analysis and complemented it with a complete case analysis in the multiverse.
+
+A further option that could be explored would be a more principled missing data analysis, where the imputation method (or lack thereof) is decided based on documented assumptions about the causes of missingness (add reference?).
+
+## Sampling weights
+
+The Future of Families survey has a complex design and is not representative of the US population, which is why the dataset comes with sampling weights which, in principle, should allow us to make the estimates nationally representative. It is clear that weights should be incorporated into the analysis when we are trying to estimate simple quantities (e.g, means or proportions) and use the sample to make inferences about the population. However, the use of survey weights for causal inference problems is not straightforward, and there is no guarantee that using the weights makes the estimate less rather than more biased [see, e.g., @schuessler2023, @solon2015]. Thus, we ran our models with and without using the national weights provided in the Future of Families data. For our main analysis reported in the manuscript, we followed convention when analysing Future of Families data and did not weight our multivariable regressions.
+
+A more laborious but also more principled approach would be to generate graphical causal models that incorporate our assumptions about the causal structure of the variables as well as the sampling design in order to determine how best to account for the sampling design for any given causal inference question [@schuessler2023].
+
+## Covariate adjustment
+
+It is common in the social sciences to statistically adjust for potential confounders when analyzing observational data. However, this likely does more harm than good [@wysocki2022], as a causal effect can just as easily be confounded as deconfounded by the addition of a covariate. Thus, in addition to running models with covariate adjustment, which are common practice when examining effects of race with the Future of Families data, we examined the effects without covariate adjustment.
+
+## Outcome
+
+Our primary interest was women's total IPV scores, but we were also interested in exploring three IPV subscales (emotional, controlling, and physical IPV). Thus we ran each analysis specification three additional times, using each IPV subscale as an outcome at a time.
+
+All in all, our "multiverse" consisted of the following "universes":
+
+```{r}
+universes <- tidyr::expand_grid(
+  missing = c("Imputed", "Complete cases"),
+  proportion = c("Continuous", "Binary", "Binomial"),
+  weights = c("Weighted", "Unweighted"),
+  covariates = c("Adjusted", "Unadjusted"),
+  total = c("Total", "Physical", "Emotional", "Controlling")
+) %>%
+  dplyr::mutate(
+    universe = 1:nrow(.)
+  ) |> 
+  dplyr::relocate(universe)
+
+universes |> knitr::kable()
+```
+
+```{r}
+comps_results <- readRDS(here::here("02_analysis-codes", "outputs", "multiverse_results.RDS")) |>
+  dplyr::mutate(summary_med_out = purrr::map(.results, "comps")) |> 
+  tidyr::unnest(cols = summary_med_out) 
+m_params <- readRDS(here::here("02_analysis-codes", "outputs", "multiverse_parameters.RDS"))
+
+comps_results_renamed <- comps_results |> 
+  dplyr::mutate(
+    term = dplyr::case_when(
+      !is.na(f_race) ~ f_race,
+      is.na(f_race) ~ term
+    ),
+    term = dplyr::case_when(
+      term == "Black" ~ "B",
+      term == "White" ~ "W",
+      term == "White - Black" ~ "W - B"
+    )
+  )
+
+comps_results_total <- comps_results_renamed |> 
+  dplyr::filter(
+    outcome == "total"
+  ) %>%
+  dplyr::mutate(
+    .universe = rep(1:(nrow(.)/3), each = 3)
+  )
+
+comps_results_physical <- comps_results_renamed |> 
+  dplyr::filter(
+    outcome == "physical"
+  ) %>%
+  dplyr::mutate(
+    .universe = rep(1:(nrow(.)/3), each = 3)
+  )
+
+comps_results_emotional <- comps_results_renamed |> 
+  dplyr::filter(
+    outcome == "emotional"
+  ) %>%
+  dplyr::mutate(
+    .universe = rep(1:(nrow(.)/3), each = 3)
+  )
+
+comps_results_controlling <- comps_results_renamed |> 
+  dplyr::filter(
+    outcome == "controlling"
+  ) %>%
+  dplyr::mutate(
+    .universe = rep(1:(nrow(.)/3), each = 3)
+  )
+```
+
+# Multiverse results - Summary
+
+The multiverse analysis reveals that our results are somewhat sensitive to different specifications. In the following sections, we present and describe some figures and tables that highlight this sensitivity.
+
+Given the discussion above about the legitimacy of each analytic choice, we don't think it sensible to summarize across specifications to arrive at an "overall" interaction effect of between race and employment. For example, summarizing the models which control for all covariates along with the models that don't control for covariates does not make sense, as covariate adjustment changes the meaning of the estimate of the effect(s) of race on IPV, so there is no meaningful way they could be averaged. Instead, we consider this process as a pedagogical tool. As Julia Rohrer put it on the 100% CI blog [@rohrer2021]:
+
+> In the end, the multiverse may prove to be most powerful as a pedagogical tool. \[...\] Multiverse analysis can raise awareness of how data analytic flexibility can be exploited. It can also alert us to gaps in our knowledge. Gaps in our knowledge about the underlying causal web: Is including that covariate arbitrary or not? What does it mean if results hinge on it? Gaps in our knowledge about statistics: Can we expect these types of models to return the same answer? Under which conditions would they diverge? Gaps in our knowledge about measurement and conceptualization: Does it make sense to expect the same result for these different operationalizations of the outcome? What does it mean if results vary? We have now closed the loop and are [back to the original multiverse paper](https://journals.sagepub.com/doi/10.1177/1745691616658637), in which the authors write: "The real conclusion of the multiverse analysis is that there is a gaping hole in theory or in measurement."
+
+# Multiverse results - Visualizations
+
+First, we visualize the full multiverse for each outcome (total, emotional, controlling, and physical IPV), looking at each effect in turn (marginal effect of unemployment for White men, marginal effect of unemployment for Black men, interaction effect), ordering by the estimate magnitude.
+
+Each of the following three graphs has the same structure. The top panel shows the effect size (which can be interpreted as percentage point differences) with confidence interval for each specification, and is colored according to significance. The bottom panel shows which combination of analytical choices produced the corresponding effect size above.
+
+First, we plot the effect of unemployment on White IPV perpetration (Figure 1), then the effect of unemployment on Black IPV perpetration (Figure 2), and finally we subtract the second from the first to show the interaction (Figure 3).
+
+## White (Employed - Unemployed)
+
+```{r}
+comps_results_white <- comps_results_renamed |> 
+  dplyr::filter(term == "W") |> 
+  dplyr::arrange(estimate) |> 
+  dplyr::mutate(.universe = 1:96)
+
+specifications_plot <- comps_results_white |> 
+  dplyr::select(.universe, all_of(names(m_params))) |> 
+  tidyr::pivot_longer(cols = all_of(names(m_params)), names_to = "parameter_name", values_to =  "parameter_option") |> 
+  dplyr::select( .universe, parameter_name, parameter_option) |> 
+  dplyr::mutate(
+    parameter_name = factor(str_replace(parameter_name, "_", "\n"))
+  ) |> 
+  ggplot() +
+  geom_point( aes(x = .universe, y = parameter_option, color = parameter_name), size = 0.5 ) +
+  labs( x = "universe #", y = "specification option") + 
+  facet_grid(parameter_name ~ ., space="free_y", scales="free_y", switch="y") +
+  coord_cartesian(xlim = c(1, 96)) +
+  theme(
+    strip.background = element_rect(fill = NA, colour = NA),
+    strip.text.y = element_blank(), 
+    legend.position = "none"
+      )
+  
+results_plot <- comps_results_white |> 
+  ggplot(aes(x = .universe, y = estimate, ymax = conf.high, ymin = conf.low, color = p.value < .05)) +
+  geom_point() +
+  geom_errorbar() +
+  geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25) +
+  labs(
+    x = "", 
+    title = "Figure 1", 
+    subtitle = "Effect for White Men by Specification"
+  ) +
+  coord_cartesian(xlim = c(1, 96)) +
+  theme(
+    axis.text.x=element_blank(),
+    axis.ticks.x=element_blank()
+  )
+
+cowplot::plot_grid(
+  results_plot, 
+  specifications_plot, 
+  axis = "bltr",  align = "v", ncol = 1
+)
+```
+
+Figure 1 shows that, across specifications, among White men unemployment is associated with their partner experiencing more IPV. However, most estimates are very close to zero or not statistically significant. We find the largest effect magnitudes for specifications with a binary IPV outcome, as well as with models that include covariate adjustment. Further, unweighted models seem to result in narrower confidence intervals and thus also more estimates that are significantly different from zero. Results don't seem to vary much whether imputed data or complete cases are used, nor based on whether the outcome is total IPV or one of the subscales.
+
+Specifications for which there is a significant effect:
+
+```{r}
+comps_results_white |> 
+  dplyr::filter(
+    p.value < .05
+  ) |> 
+  dplyr::select(
+    names(m_params),
+    estimate, p.value
+  ) |> 
+  rempsyc::nice_table(
+    note = "* p < .05, ** p < .01, *** p < .001"
+  )
+```
+
+Only models without sampling weights returned a significant result. Of note, the great majority of models with significant results did not adjust for covariates, thereby not reducing the effect of race through the inclusion of a post-treatment variable (which could be a mediator). Further, only binary or multiple-trial binomial models returned significant results.
+
+## Black (Employed - Unemployed)
+
+```{r}
+comps_results_black <- comps_results_renamed |> 
+  dplyr::filter(term == "B") |> 
+  dplyr::arrange(estimate) |> 
+  dplyr::mutate(.universe = 1:96)
+
+specifications_plot <- comps_results_black |> 
+  dplyr::select(.universe, all_of(names(m_params))) |> 
+  tidyr::pivot_longer(cols = all_of(names(m_params)), names_to = "parameter_name", values_to =  "parameter_option") |> 
+  dplyr::select( .universe, parameter_name, parameter_option) |> 
+  dplyr::mutate(
+    parameter_name = factor(str_replace(parameter_name, "_", "\n"))
+  ) |> 
+  ggplot() +
+  geom_point( aes(x = .universe, y = parameter_option, color = parameter_name), size = 0.5 ) +
+  labs( x = "universe #", y = "specification option") + 
+  facet_grid(parameter_name ~ ., space="free_y", scales="free_y", switch="y") +
+  coord_cartesian(xlim = c(1, 96)) +
+  theme(
+    strip.background = element_rect(fill = NA, colour = NA),
+    strip.text.y = element_blank(), 
+    legend.position = "none"
+      )
+  
+results_plot <- comps_results_black |> 
+  ggplot(aes(x = .universe, y = estimate, ymax = conf.high, ymin = conf.low, color = p.value < .05)) +
+  geom_point() +
+  geom_errorbar() +
+  geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25) +
+  labs(
+    x = "", 
+    title = "Figure 2", 
+    subtitle = "Effect for Black Men by Specification"
+  ) +
+  coord_cartesian(xlim = c(1, 96)) +
+  theme(
+    axis.text.x=element_blank(),
+    axis.ticks.x=element_blank()
+  )
+
+cowplot::plot_grid(
+  results_plot, 
+  specifications_plot, 
+  axis = "bltr",  align = "v", ncol = 1
+)
+```
+
+Figure 2 shows more variability regarding the direction of the impact of unemployment on IPV perpetrated by Black men: while most specifications suggest that unemployment is associated with lower IPV, almost half of the estimated effects and all of the significant effects are in the opposite direction. Covariate adjusted and survey-weighted models seem to result in more "positive" estimates (meaning that employment is associated with higher IPV), while the converse is true for unadjusted and unweighted models.
+
+Specifications for which there is a significant effect:
+
+```{r}
+comps_results_black |> 
+  dplyr::filter(
+    p.value < .05
+  ) |> 
+  dplyr::select(
+    names(m_params),
+    estimate, p.value
+  ) |> 
+  rempsyc::nice_table(
+    note = "* p < .05, ** p < .01, *** p < .001"
+  )
+```
+
+Here we once again only find an effect for unweighted models, and we can see that adjusting for covariates leads to significant effects in the opposite direction compared to unadjusted models.
+
+## Interaction (White (Emp - Unemp) - Black (Emp - Unemp))
+
+```{r}
+comps_results_interaction <- comps_results_renamed |> 
+  dplyr::filter(term == "W - B") |> 
+  dplyr::arrange(estimate) |> 
+  dplyr::mutate(.universe = 1:96)
+
+specifications_plot <- comps_results_interaction |> 
+  dplyr::select(.universe, all_of(names(m_params))) |> 
+  tidyr::pivot_longer(cols = all_of(names(m_params)), names_to = "parameter_name", values_to =  "parameter_option") |> 
+  dplyr::select( .universe, parameter_name, parameter_option) |> 
+  dplyr::mutate(
+    parameter_name = factor(str_replace(parameter_name, "_", "\n"))
+  ) |> 
+  ggplot() +
+  geom_point( aes(x = .universe, y = parameter_option, color = parameter_name), size = 0.5 ) +
+  labs( x = "universe #", y = "specification option") + 
+  facet_grid(parameter_name ~ ., space="free_y", scales="free_y", switch="y") +
+  coord_cartesian(xlim = c(1, 96)) +
+  theme(
+    strip.background = element_rect(fill = NA, colour = NA),
+    strip.text.y = element_blank(), 
+    legend.position = "none"
+      )
+  
+results_plot <- comps_results_interaction |> 
+  ggplot(aes(x = .universe, y = estimate, ymax = conf.high, ymin = conf.low, color = p.value < .05)) +
+  geom_point() +
+  geom_errorbar() +
+  geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25) +
+  labs(
+    x = "", 
+    title = "Figure 3", 
+    subtitle = "Interaction Effect by Specification"
+  ) +
+  coord_cartesian(xlim = c(1, 96)) +
+  theme(
+    axis.text.x=element_blank(),
+    axis.ticks.x=element_blank()
+  )
+
+cowplot::plot_grid(
+  results_plot, 
+  specifications_plot, 
+  axis = "bltr",  align = "v", ncol = 1
+)
+```
+
+Figure 3 shows that a most specifications result in a "negative", albeit not significant, interaction effect, such that the difference in IPV between employed and unemployed men is more negative for White men as compared to Black men. Here again we see that models using binarized IPV show the starkest negative interaction effect. The other specification options don't seem to have a systematic effect on the estimated interaction.
+
+Specifications for which there is a significant effect:
+
+```{r}
+comps_results_interaction |> 
+  dplyr::filter(
+    p.value < .05
+  ) |> 
+  dplyr::select(
+    names(m_params),
+    estimate, p.value
+  ) |> 
+  rempsyc::nice_table(
+    note = "* p < .05, ** p < .01, *** p < .001"
+  )
+```
+
+Again, only unweighted models return significant results. Further, we mostly find interactions when looking at total IPV and not controlling, emotional (except for in one specification), or physical IPV.
+
+Next we home in on each outcome in turn (total, emotional, controlling, and physical IPV), without arranging by size of estimate. In each figure, the top plot shows the three effects (Top: effect of unemployment among Black men, Middle: effect of unemployment among White men, Bottom: interaction effect) while the bottom plot describes the corresponding specifications.
+
+```{r}
+# for the general plots, specifications in their original order
+
+specifications <- comps_results_renamed |> 
+  # we only need this once, even though we are plotting all effects at once
+  dplyr::filter(term == "W", outcome == "total") |> 
+  dplyr::select(.universe, all_of(names(m_params))) %>%
+  dplyr::mutate(.universe = 1:nrow(.))
+
+specifications_plot <- specifications |> 
+  tidyr::pivot_longer(cols = all_of(names(m_params)), names_to = "parameter_name", values_to =  "parameter_option") |> 
+  dplyr::select( .universe, parameter_name, parameter_option) |> 
+  dplyr::filter(parameter_name != "outcome") |> 
+  dplyr::mutate(
+    parameter_name = factor(str_replace(parameter_name, "_", "\n"))
+  ) |> 
+  ggplot() +
+  geom_point( aes(x = .universe, y = parameter_option, color = parameter_name), size = 0.5 ) +
+  labs( x = "universe #", y = "specification option") + 
+  facet_grid(parameter_name ~ ., space="free_y", scales="free_y", switch="y") +
+  coord_cartesian(xlim = c(1, 24))  +
+  theme(
+    strip.background = element_rect(fill = NA, colour = NA),
+    strip.text.y = element_blank(), 
+    legend.position = "none"
+      )
+```
+
+## Total IPV
+
+```{r}
+results_plot <- comps_results_total |> 
+  ggplot(aes(x = .universe, y = estimate, ymax = conf.high, ymin = conf.low, color = p.value < .05)) +
+  geom_point() +
+  geom_errorbar() +
+  geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25) +
+  labs(
+    x = "", 
+    title = "Figure 4", 
+    subtitle = "Marginal & Interaction Effects on Total IPV\nby Specification"
+  ) +
+  facet_grid(term ~ ., scales="free_y") +
+  coord_cartesian(xlim = c(1, 24)) +
+  theme(
+    axis.text.x=element_blank(), #remove x axis labels
+    axis.ticks.x=element_blank()
+  )
+
+cowplot::plot_grid(
+  results_plot, 
+  specifications_plot, 
+  axis = "bltr",  align = "v", ncol = 1, 
+  rel_heights = c(1.75, 1)
+)
+```
+
+Figure 4 makes clear that when our outcome is a measure of total IPV, results vary most depending on the model specification (linear, binomial, or binary outcome), with the only significant results coming from binary or binomial unweighted models. Across specifications we see positive effects of unemployment (meaning, lower IPV perpetration) for Black fathers and negative effects for White fathers, though the effect sizes are very small.
+
+## Emotional IPV
+
+```{r}
+results_plot <- comps_results_emotional |> 
+  ggplot(aes(x = .universe, y = estimate, ymax = conf.high, ymin = conf.low, color = p.value < .05)) +
+  geom_point() +
+  geom_errorbar() +
+  geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25) +
+  labs(
+    x = "", 
+    title = "Figure 5", 
+    subtitle = "Marginal & Interaction Effects on Emotional IPV\nby Specification"
+  ) +
+  facet_grid(term ~ ., scales="free_y") +
+  coord_cartesian(xlim = c(1, 24)) +
+  theme(
+    axis.text.x=element_blank(), #remove x axis labels
+    axis.ticks.x=element_blank()
+  )
+
+cowplot::plot_grid(
+  results_plot, 
+  specifications_plot, 
+  axis = "bltr",  align = "v", ncol = 1, 
+  rel_heights = c(1.75, 1)
+)
+```
+
+When we look at emotional IPV, the multiverse paints a picture of a null effect - all specifications result in estimates close to zero, the majority of which are not significant. Again, weighted binary models show the widest confidence intervals and unweigthed binomial models the narrowest.
+
+## Controlling IPV
+
+```{r}
+results_plot <- comps_results_controlling |> 
+  ggplot(aes(x = .universe, y = estimate, ymax = conf.high, ymin = conf.low, color = p.value < .05)) +
+  geom_point() +
+  geom_errorbar() +
+  geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25) +
+  labs(
+    x = "", 
+    title = "Figure 6", 
+    subtitle = "Marginal & Interaction Effects on Controlling IPV\nby Specification"
+  ) +
+  facet_grid(term ~ ., scales="free_y") +
+  coord_cartesian(xlim = c(1, 24)) +
+  theme(
+    axis.text.x=element_blank(), #remove x axis labels
+    axis.ticks.x=element_blank()
+  )
+
+cowplot::plot_grid(
+  results_plot, 
+  specifications_plot, 
+  axis = "bltr",  align = "v", ncol = 1, 
+  rel_heights = c(1.75, 1)
+)
+```
+
+Controlling IPV also tells a story of no interaction, and the effects for Black and White parents also seem to fall on either side of the 0 line.
+
+## Physical IPV
+
+```{r}
+results_plot <- comps_results_physical |> 
+  ggplot(aes(x = .universe, y = estimate, ymax = conf.high, ymin = conf.low, color = p.value < .05)) +
+  geom_point() +
+  geom_errorbar() +
+  geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25) +
+  labs(
+    x = "", 
+    title = "Figure 7", 
+    subtitle = "Marginal & Interaction Effects on Physical IPV by Specification"
+  ) +
+  facet_grid(term ~ ., scales="free_y") +
+  coord_cartesian(xlim = c(1, 24)) +
+  theme(
+    axis.text.x=element_blank(), #remove x axis labels
+    axis.ticks.x=element_blank()
+  )
+
+cowplot::plot_grid(
+  results_plot, 
+  specifications_plot, 
+  axis = "bltr",  align = "v", ncol = 1, 
+  rel_heights = c(1.75, 1)
+)
+```
+
+Looking just at physical IPV, the interaction becomes even less pronounced, with estimates for the difference between the effect of unemployment on Black and White fathers' IPV perpetration hovering around 0. The marginal effects themselves are almost all small and nonsignificant, indicating that the true effects could be zero or lie on either side of zero.
+
+# References

@@ -1,0 +1,271 @@
+---
+title: "IPV Perpetration according to race and employment status"
+subtitle: "An intersectional analysis using FFCWS data"
+format: docx
+editor: visual
+execute:
+  message: false
+  warning: false
+---
+
+::: callout-important
+## Important
+
+Analysis performed **without sampling weights**
+:::
+
+First, we load the data and the necessary packages:
+
+```{r}
+# packages ----------------------------------------------------------------
+packages <- c("tidyverse", "here", "marginaleffects")
+groundhog_day <- "2024-01-11"
+
+# (install and) load package versions available on the specified day to try
+# to ensure reproducibility
+
+library(groundhog)
+
+groundhog::meta.groundhog(groundhog_day)
+
+groundhog::groundhog.library(pkg = packages, date = groundhog_day)
+
+
+dat <- readRDS(file = here::here("01_data-processing", "data_private", "data_final_imputed_cases.RDS"))
+```
+
+# Regression Models
+
+## Race -\> IPV
+
+Without considering employment, is race associated with different IPV rates?
+
+We perform a linear regression, adjusting for all control variables.
+
+```{r}
+mod_race_ipv <- glm(
+  formula = ipv_prop ~ f_race + 
+    f_age + f_education + f_alcohol + f_drugs +
+    f_children + f_poverty + f_incarceration +
+    f_home + f_depression,
+  data = dat,
+  family = "gaussian"
+)
+
+summary(mod_race_ipv)
+
+marginaleffects::avg_predictions(mod_race_ipv, variables = "f_race", vcov = "HC")
+marginaleffects::avg_comparisons(mod_race_ipv, variables = "f_race", vcov = "HC")
+```
+
+And now without covariates
+
+```{r}
+mod_race_ipv_nocov <- glm(
+  formula = ipv_prop ~ f_race,
+  data = dat,
+  family = "gaussian"
+)
+
+summary(mod_race_ipv_nocov)
+
+marginaleffects::avg_predictions(mod_race_ipv_nocov, variables = "f_race", vcov = "HC")
+marginaleffects::avg_comparisons(mod_race_ipv_nocov, variables = "f_race", vcov = "HC")
+```
+
+## Race + Employment -\> IPV
+
+When using race and employment, are they, respectively, predictive of IPV?
+
+We perform a linear regression, adjusting for all control variables.
+
+```{r}
+mod_race_employment_ipv <- glm(
+  formula = ipv_prop ~ f_race + f_employment +
+    f_age + f_education + f_alcohol + f_drugs +
+    f_children + f_poverty + f_incarceration +
+    f_home + f_depression,
+  data = dat,
+  family = "gaussian"
+)
+
+summary(mod_race_employment_ipv)
+
+marginaleffects::avg_predictions(mod_race_employment_ipv, variables = "f_race", vcov = "HC")
+
+marginaleffects::avg_predictions(mod_race_employment_ipv, variables = c("f_race", "f_employment"), vcov = "HC")
+
+
+marginaleffects::avg_comparisons(mod_race_employment_ipv, variables = "f_race", vcov = "HC")
+
+
+marginaleffects::avg_predictions(mod_race_employment_ipv, variables = "f_employment", vcov = "HC")
+marginaleffects::avg_comparisons(mod_race_employment_ipv, variables = "f_employment", vcov = "HC")
+```
+
+And now without covariates
+
+```{r}
+mod_race_employment_ipv_nocov <- glm(
+  formula = ipv_prop ~ f_race + f_employment,
+  data = dat,
+  family = "gaussian"
+)
+
+summary(mod_race_employment_ipv_nocov)
+
+marginaleffects::avg_predictions(mod_race_employment_ipv_nocov, variables = "f_race", vcov = "HC")
+
+marginaleffects::avg_predictions(mod_race_employment_ipv_nocov, variables = c("f_race", "f_employment"), vcov = "HC")
+
+
+marginaleffects::avg_comparisons(mod_race_employment_ipv_nocov, variables = "f_race", vcov = "HC")
+
+
+marginaleffects::avg_predictions(mod_race_employment_ipv_nocov, variables = "f_employment", vcov = "HC")
+marginaleffects::avg_comparisons(mod_race_employment_ipv_nocov, variables = "f_employment", vcov = "HC")
+```
+
+## Race \* Employment -\> IPV
+
+When allowing race and employment to interact, how do they predict IPV?
+
+We perform a weighted logistic regression, adjusting for all control variables.
+
+```{r}
+mod_race_employment_interaction_ipv <- glm(
+  formula = ipv_prop ~ f_race * f_employment +
+    f_age + f_education + f_alcohol + f_drugs +
+    f_children + f_poverty + f_incarceration +
+    f_home + f_depression,
+  data = dat,
+  family = "gaussian"
+)
+
+summary(mod_race_employment_interaction_ipv)
+
+marginaleffects::avg_predictions(
+  mod_race_employment_interaction_ipv, 
+  variables = c("f_race", "f_employment"), vcov = "HC"
+) 
+
+marginaleffects::avg_predictions(
+  mod_race_employment_interaction_ipv, 
+  variables = c("f_race", "f_employment"), vcov = "HC"
+) |> 
+  dplyr::mutate(
+    across(.cols = -dplyr::starts_with("f_"), .fns = as.numeric)
+  ) |> 
+  ggplot(aes(x = f_race, y = estimate, ymin = conf.low, ymax = conf.high, color = f_employment)) +
+  geom_pointrange(position = position_dodge(width = .5)) +
+  xlab("Race") +
+  ylab("IPV Index") +
+  scale_color_viridis_d(option = "magma", begin = .2, end = .8)
+  
+
+marginaleffects::avg_comparisons(
+  mod_race_employment_interaction_ipv, 
+  variables = "f_race", 
+  by = "f_employment", vcov = "HC"
+)
+
+# (BE - WE) - (BU - WU)
+marginaleffects::avg_comparisons(
+  mod_race_employment_interaction_ipv,
+  variables = "f_race", 
+  by = "f_employment",
+  hypothesis = "pairwise", vcov = "HC"
+)
+
+
+marginaleffects::avg_comparisons(
+  mod_race_employment_interaction_ipv, 
+  variables = "f_employment", 
+  by = "f_race", vcov = "HC"
+)
+
+# (WE - WU) - (BE - BU) (simply the other comparison multiplied by -1)
+marginaleffects::avg_comparisons(
+  mod_race_employment_interaction_ipv,
+  variables = "f_employment", by = "f_race",
+  hypothesis = "pairwise", vcov = "HC"
+)
+
+```
+
+And now without covariates
+
+```{r}
+mod_race_employment_interaction_ipv_nocov <- glm(
+  formula = ipv_prop ~ f_race * f_employment,
+  data = dat,
+  family = "gaussian"
+)
+
+summary(mod_race_employment_interaction_ipv_nocov)
+
+marginaleffects::avg_predictions(
+  mod_race_employment_interaction_ipv_nocov, 
+  variables = c("f_race", "f_employment"), vcov = "HC"
+) 
+
+marginaleffects::avg_predictions(
+  mod_race_employment_interaction_ipv_nocov, 
+  variables = c("f_race", "f_employment"), vcov = "HC"
+) |> 
+  dplyr::mutate(
+    across(.cols = -dplyr::starts_with("f_"), .fns = as.numeric)
+  ) |> 
+  ggplot(aes(x = f_race, y = estimate, ymin = conf.low, ymax = conf.high, color = f_employment)) +
+  geom_pointrange(position = position_dodge(width = .5)) +
+  xlab("Race") +
+  ylab("IPV Index") +
+  scale_color_viridis_d(option = "magma", begin = .2, end = .8)
+  
+
+marginaleffects::avg_comparisons(
+  mod_race_employment_interaction_ipv_nocov, 
+  variables = "f_race", 
+  by = "f_employment", vcov = "HC"
+)
+
+# (BE - WE) - (BU - WU)
+marginaleffects::avg_comparisons(
+  mod_race_employment_interaction_ipv_nocov,
+  variables = "f_race", 
+  by = "f_employment",
+  hypothesis = "pairwise", vcov = "HC"
+)
+
+
+marginaleffects::avg_comparisons(
+  mod_race_employment_interaction_ipv_nocov, 
+  variables = "f_employment", 
+  by = "f_race", vcov = "HC"
+)
+
+# (WE - WU) - (BE - BU) (simply the other comparison multiplied by -1)
+marginaleffects::avg_comparisons(
+  mod_race_employment_interaction_ipv_nocov,
+  variables = "f_employment", by = "f_race",
+  hypothesis = "pairwise", vcov = "HC"
+)
+```
+
+# Models side by side
+
+```{r}
+modelsummary::modelsummary(
+  models = list(
+    "IPV on race" = mod_race_ipv,
+    "IPV on race and employment" = mod_race_employment_ipv,
+    "IPV on race by employment" = mod_race_employment_interaction_ipv
+  ),
+  estimate = "estimate",
+  stars = TRUE,
+  statistic = c("conf.int", "p.value"),
+  vcov = sandwich::vcovHC
+)
+```
+
+# 

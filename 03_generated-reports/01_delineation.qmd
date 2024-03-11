@@ -1,0 +1,93 @@
+---
+title: "Sample Delineation - Fathers Analysis"
+format: docx
+editor: visual
+execute:
+  echo: false
+  message: false
+  warning: false
+---
+
+```{r setup}
+
+# packages ----------------------------------------------------------------
+packages <- c("tidyverse", "here", "gt")
+groundhog_day <- "2024-01-11"
+
+# (install and) load package versions available on the specified day to try
+# to ensure reproducibility
+
+library(groundhog)
+
+groundhog::meta.groundhog(groundhog_day)
+
+groundhog::groundhog.library(pkg = packages, date = groundhog_day)
+
+
+library(here)
+library(tidyverse)
+library(gt)
+
+dat_delineated <- readRDS(file = here::here("01_data-processing", "data_public", "delineation.RDS"))
+```
+
+We excluded the following couples:
+
+1.  Fathers from the Baseline survey who were not in the national sample
+2.  Mothers where the father of their child did not participate in the Baseline survey
+3.  Mother-father pairs where fathers were in the two cities.
+4.  Mother-father pairs where the father did not self-identify as either Black or White.
+5.  Mother-father pairs who were not romantically involved at the Year 1 survey, or between the Year 1 and Baseline surveys.
+6.  Mother-father pairs where the mother did not participate in the Year 1 survey and thus, her IPV victimisation, could not be ascertained.
+
+The following table show the number of rows in our data that didn't meet each individual criterion.
+
+```{r}
+dat_delineated |>
+  summarise(
+    not_national_sample = sum(!(f_national_sample == 1)), 
+    not_interviewed_zero = sum(!(f_interviewed_zero == 1)),
+    not_two_cities = sum(!(f_two_cities == 1)), 
+    not_race = sum(!(f_race == 1)),
+    not_in_relationship = sum(!(m_in_relationship == 1)),
+    not_interviewed_one = sum(!(m_interviewed_one == 1))
+    
+  ) |> 
+  pivot_longer(
+    cols = everything(),
+    names_to = "criterion",
+    values_to = "n_dont_fit"
+  ) |> 
+  gt::gt()
+```
+
+The following table shows the cumulative number of couples included and excluded based on applying each criterion successively:
+
+```{r}
+dat_delineated |> 
+  dplyr::mutate(
+    fit_criterion_1 = f_national_sample == 1,
+    fit_criterion_2 = fit_criterion_1 & f_interviewed_zero == 1,
+    fit_criterion_3 = fit_criterion_2 & f_two_cities == 1,
+    fit_criterion_4 = fit_criterion_3 & f_race == 1,
+    fit_criterion_5 = fit_criterion_4 & m_in_relationship == 1,
+    fit_criterion_6 = fit_criterion_5 & m_interviewed_one == 1
+  ) |> 
+  dplyr::summarise(
+    dplyr::across(
+      .cols = starts_with("fit_"),
+      .fns = ~sum(.x)
+    )
+  ) |> 
+  pivot_longer(
+    cols = everything(),
+    names_to = "criterion",
+    values_to = "n_cumulative_fit"
+  ) |> 
+  mutate(
+    n_cumulative_dont_fit = nrow(dat_delineated) - n_cumulative_fit
+  ) |> 
+  gt::gt()
+```
+
+As we can see, our final sample included 1585 rows, meaning that 3313 couples were excluded based on the criteria.
