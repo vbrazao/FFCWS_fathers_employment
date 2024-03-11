@@ -1,0 +1,14 @@
+# exclude everything in the folders
+01_data-processing/data_private/*
+02_analysis-codes/outputs/*
+
+# but keep the .gitkeep files so the "empty" folder is tracked and uploaded
+!01_data-processing/data_private/.gitkeep
+!02_analysis-codes/outputs/.gitkeep
+
+.Rproj.user
+.Rhistory
+.Rdata
+.httr-oauth
+.DS_Store
+.quarto
