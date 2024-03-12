@@ -35,4 +35,3 @@ The following is a set of instructions for those who would like to reproduce our
 -   Run the script `00_data/00_import-data.R`.
 -   Run the remaining scripts in order. Beware that the script to generate the multiverse will take a while and use all available cores.
 -   Render the Quarto documents in `03_generated-reports`.
--   
