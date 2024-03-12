@@ -42,7 +42,7 @@ data_raw <- lapply(
 
 saveRDS(
   object = data_raw,
-  file = here::here("01_data-processing", "data-private", "data_raw.rds")
+  file = here::here("01_data-processing", "data_private", "data_raw.rds")
 )
 
 
