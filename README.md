@@ -6,6 +6,7 @@ This repository contains files necessary for inspecting and reproducing analyses
 
 The following is an overview of the repository (the hierarchy of the list mirrors the hierarchy within the directory):
 
+-   Folder `00_data` is meant to facilitate reproducibility. It contains the file `00_import-data.R`. When the correct raw data is saved in this folder, the script can be run to then populate the folder `01_data-processing/data_private` with the raw data file that is then used by the scripts in `01_data-processing/r`.
 -   Folder `01_data-processing` generally contains data files and related code.
     -   `CODEBOOK.Rmd` is an RMarkdown document describing all the variables used in the analysis and how they were constructed from the raw dataset, in the same order as the code found under `r/02_wrangle-data.R`. When knitted, it produces `CODEBOOK.docx`, which is also available for download.
     -   The folder `data_private` locally contains raw data and wrangled data produced by the code in the `r` folder, but is not uploaded to GitHub for privacy reasons. It contains a `.gitkeep` file to make it possible to upload the folder without any of its local contents. This way, if someone downloads the repository, manually adds a raw data file, and runs the code in order, this folder should be correctly populated with the wrangled data, etc.
