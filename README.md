@@ -15,6 +15,11 @@ The following is an overview of the repository (the hierarchy of the list mirror
     -   The folder `r` contains R scripts that delineate the sample and wrangle the data.
         -   `01_delineate-sample.R` takes the raw data and produces the two files that populate the `data-public` folder (`delineation.RDS` and `included_IDs.RDS`)
         -   `02_wrangle-data.R` takes the raw data, filters it to include only the relevant IDs, creates each variable from the raw data, performs data imputation where relevant, and produces the three final datasets that are stored in `data-private`: `data_final.RDS`, `data_final_complete_cases.RDS`, `data_final_imputed_cases.RDS`.
+-   Folder `02_analysis-codes` contains code and a subfolder for the resulting multiverse analyses.
+    -   Folder `r` contains the script.
+        -   `01_generate-multiverse.R` takes quite some time to run and, if you let it, will use all the cores on your machine. If it runs successfully, it will save all results from the multiverse analysis in `02_analysis-codes/outputs/multiverse_results.RDS` and also the different parameters separately in `../multiverse_parameters.RDS`.
+    -   Folder `outputs` stores the outputs mentioned above locally and includes a `.gitkeep` file so that the "empty" folder can be part of the GitHub repository.
+-   Folder `03_generated-reports` contains Quarto files and their outputs, as well as the .csl and .bib files required for the multiverse report. 
 
 The following is a set of instructions for those who would like to reproduce our analysis.
 
