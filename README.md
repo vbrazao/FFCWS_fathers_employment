@@ -19,7 +19,7 @@ The following is an overview of the repository (the hierarchy of the list mirror
 -   Folder `02_analysis-codes` contains code and a subfolder for the resulting multiverse analyses.
     -   Folder `r` contains the script.
         -   `01_generate-multiverse.R` takes quite some time to run and, if you let it, will use all the cores on your machine. If it runs successfully, it will save all results from the multiverse analysis in `02_analysis-codes/outputs/multiverse_results.RDS` and also the different parameters separately in `../multiverse_parameters.RDS`.
-    -   Folder `outputs` stores the outputs mentioned above locally and includes a `.gitkeep` file so that the "empty" folder can be part of the GitHub repository.
+    -   Folder `outputs` stores the outputs mentioned above locally and includes a `.gitkeep` file so that the "empty" folder can be part of the GitHub repository. Our outputs from the multiverse analysis are stored separetly on the Open Science Framework because it allows the storage of larger files than this GitHub repository (link to the OSF storage to be added here).
 -   Folder `03_generated-reports` contains Quarto files and their outputs, as well as the .csl and .bib files required for the multiverse report.
 
 The following is a set of instructions for those who would like to reproduce our analysis.
@@ -33,5 +33,7 @@ The following is a set of instructions for those who would like to reproduce our
     -   Wave 2: `00_data/FF_wave2_2020v2_SAS.sas7bdat`
 -   Open the R Project (double-clicking the `FFCWS_fathers_employment.Rproj` file).
 -   Run the script `00_data/00_import-data.R`.
--   Run the remaining scripts in order. Beware that the script to generate the multiverse will take a while and use all available cores.
--   Render the Quarto documents in `03_generated-reports`.
+-   Run the remaining scripts in order. Beware that the script to generate the multiverse will take a while and use all available cores. To be clear, this is the intended order:
+    1.  In folder `01_data-processing/r`, first run `01_delineate-sample.R`, then run `02_wrangle-data.R`.
+    2.  In folder `02_analysis-codes/r` run `01_generate-multiverse.R`. Raise the volume on your laptop and wait for the "beep" that will signal the end of the computations.
+-   In folder `03_generated-reports` open each `.qmd` file in ascending numerical order and render the files to generate the `.docx` documents. You should be able to change the output format to `html` if you prefer.
