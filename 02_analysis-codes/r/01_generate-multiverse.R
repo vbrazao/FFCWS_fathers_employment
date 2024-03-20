@@ -2,7 +2,7 @@
 # code that generates the multiverse analysis and saves the results
 
 # packages ----------------------------------------------------------------
-packages <- c("multiverse", "future", "beepr")
+packages <- c("tidyverse", "broom", "multiverse", "marginaleffects", "srvyr", "survey", "future", "beepr")
 groundhog_day <- "2024-01-11"
 
 # (install and) load package versions available on the specified day to try
@@ -26,20 +26,6 @@ M <- multiverse::multiverse()
 multiverse::inside(
   M,
   {
-    
-    
-    # packages ----------------------------------------------------------------
-    packages <- c("tidyverse", "broom", "multiverse", "marginaleffects", "srvyr", "survey")
-    groundhog_day <- "2024-03-09"
-    
-    # (install and) load package versions available on the specified day to try
-    # to ensure reproducibility
-    
-    library(groundhog)
-    
-    groundhog::meta.groundhog(groundhog_day)
-    
-    groundhog::groundhog.library(pkg = packages, date = groundhog_day)
     
     
     dat_cc <- readRDS(here::here("01_data-processing", "data_private", "data_final_complete_cases.RDS"))
@@ -152,6 +138,22 @@ multiverse::inside(
     
     comp_race <- marginaleffects::avg_comparisons(
       model.int, 
+      variables = "f_race",
+      vcov = branch(
+        proportion,
+        "continuous" ~ branch(
+          weights,
+          "weighted" ~ NULL,
+          "unweighted" ~ "HC"
+        ),
+        "binary" ~ NULL,
+        "binomial" ~ NULL
+      )
+    ) |> broom::tidy() |> 
+      dplyr::mutate(comp = "race")
+    
+    comp_race_emp <- marginaleffects::avg_comparisons(
+      model.int, 
       variables = "f_employment", 
       by = "f_race", vcov = branch(
         proportion,
@@ -164,7 +166,7 @@ multiverse::inside(
         "binomial" ~ NULL
       )
     ) |> broom::tidy() |> 
-      dplyr::mutate(comp = "race")
+      dplyr::mutate(comp = "race_emp")
     
     # (WE - WU) - (BE - BU)
     comp_interaction <- marginaleffects::avg_comparisons(
@@ -183,7 +185,7 @@ multiverse::inside(
     ) |> broom::tidy() |> 
       dplyr::mutate(comp = "interaction")
     
-    comps <- dplyr::bind_rows(comp_race, comp_interaction)
+    comps <- dplyr::bind_rows(comp_race, comp_race_emp, comp_interaction)
   }
 )
 

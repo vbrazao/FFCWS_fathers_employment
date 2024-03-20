@@ -92,8 +92,10 @@ comps_results_renamed <- comps_results |>
     term = dplyr::case_when(
       term == "Black" ~ "B",
       term == "White" ~ "W",
-      term == "White - Black" ~ "W - B"
-    )
+      term == "White - Black" ~ "W - B",
+      term == "f_race" ~ "B - W"
+    ) |> forcats::as_factor() |> 
+      forcats::fct_relevel("B - W", "B")
   )
 
 comps_results_total <- comps_results_renamed |> 
@@ -101,7 +103,7 @@ comps_results_total <- comps_results_renamed |>
     outcome == "total"
   ) %>%
   dplyr::mutate(
-    .universe = rep(1:(nrow(.)/3), each = 3)
+    .universe = rep(1:(nrow(.)/4), each = 4)
   )
 
 comps_results_physical <- comps_results_renamed |> 
@@ -141,11 +143,76 @@ Given the discussion above about the legitimacy of each analytic choice, we don'
 
 First, we visualize the full multiverse for each outcome (total, emotional, controlling, and physical IPV), looking at each effect in turn (marginal effect of unemployment for White men, marginal effect of unemployment for Black men, interaction effect), ordering by the estimate magnitude.
 
-Each of the following three graphs has the same structure. The top panel shows the effect size (which can be interpreted as percentage point differences) with confidence interval for each specification, and is colored according to significance. The bottom panel shows which combination of analytical choices produced the corresponding effect size above.
+Each of the following four graphs has the same structure. The top panel shows the effect size (which can be interpreted as percentage point differences) with confidence interval for each specification, and is colored according to significance. The bottom panel shows which combination of analytical choices produced the corresponding effect size above.
 
-First, we plot the effect of unemployment on White IPV perpetration (Figure 1), then the effect of unemployment on Black IPV perpetration (Figure 2), and finally we subtract the second from the first to show the interaction (Figure 3).
+First, we plot the effect Black race on IPV perpetration, then the effect of unemployment on White IPV perpetration (Figure 2), then the effect of unemployment on Black IPV perpetration (Figure 3), and finally we subtract the third from the second to show the interaction (Figure 4).
 
-## White (Employed - Unemployed)
+## Effect of race on IPV (Black - White)
+
+```{r}
+comps_results_race <- comps_results_renamed |> 
+  dplyr::filter(term == "B - W") |> 
+  dplyr::arrange(estimate) |> 
+  dplyr::mutate(.universe = 1:96)
+
+specifications_plot <- comps_results_race |> 
+  dplyr::select(.universe, all_of(names(m_params))) |> 
+  tidyr::pivot_longer(cols = all_of(names(m_params)), names_to = "parameter_name", values_to =  "parameter_option") |> 
+  dplyr::select( .universe, parameter_name, parameter_option) |> 
+  dplyr::mutate(
+    parameter_name = factor(str_replace(parameter_name, "_", "\n"))
+  ) |> 
+  ggplot() +
+  geom_point( aes(x = .universe, y = parameter_option, color = parameter_name), size = 0.5 ) +
+  labs( x = "universe #", y = "specification option") + 
+  facet_grid(parameter_name ~ ., space="free_y", scales="free_y", switch="y") +
+  coord_cartesian(xlim = c(1, 96)) +
+  theme(
+    strip.background = element_rect(fill = NA, colour = NA),
+    strip.text.y = element_blank(), 
+    legend.position = "none"
+      )
+  
+results_plot <- comps_results_race |> 
+  ggplot(aes(x = .universe, y = estimate, ymax = conf.high, ymin = conf.low, color = p.value < .05)) +
+  geom_point() +
+  geom_errorbar() +
+  geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25) +
+  labs(
+    x = "", 
+    title = "Figure 1", 
+    subtitle = "Effect of Race on IPV by Specification"
+  ) +
+  coord_cartesian(xlim = c(1, 96)) +
+  theme(
+    axis.text.x=element_blank(),
+    axis.ticks.x=element_blank()
+  )
+
+cowplot::plot_grid(
+  results_plot, 
+  specifications_plot, 
+  axis = "bltr",  align = "v", ncol = 1
+)
+```
+
+Figure 1 shows that, when there is a significant effect of race on IPV, it is in the positive direction (being Black is associated with more IPV perpetration). However, a great many effects are not significant and/or very close to zero, and all the larger effect sizes are seen in the binary specifications.
+
+Specifications for which there is a significant effect:
+
+```{r}
+comps_results_race |> 
+  dplyr::filter(
+    p.value < .05
+  ) |> 
+  dplyr::select(
+    names(m_params),
+    estimate, p.value
+  ) |> 
+  rempsyc::nice_table(
+    note = "* p < .05, ** p < .01, *** p < .001"
+  )
+```
 
 ```{r}
 comps_results_white <- comps_results_renamed |> 
@@ -178,7 +245,7 @@ results_plot <- comps_results_white |>
   geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25) +
   labs(
     x = "", 
-    title = "Figure 1", 
+    title = "Figure 2", 
     subtitle = "Effect for White Men by Specification"
   ) +
   coord_cartesian(xlim = c(1, 96)) +
@@ -194,7 +261,7 @@ cowplot::plot_grid(
 )
 ```
 
-Figure 1 shows that, across specifications, among White men unemployment is associated with their partner experiencing more IPV. However, most estimates are very close to zero or not statistically significant. We find the largest effect magnitudes for specifications with a binary IPV outcome, as well as with models that include covariate adjustment. Further, unweighted models seem to result in narrower confidence intervals and thus also more estimates that are significantly different from zero. Results don't seem to vary much whether imputed data or complete cases are used, nor based on whether the outcome is total IPV or one of the subscales.
+Figure 2 shows that, across specifications, among White men unemployment is associated with their partner experiencing more IPV. However, most estimates are very close to zero or not statistically significant. We find the largest effect magnitudes for specifications with a binary IPV outcome, as well as with models that include covariate adjustment. Further, unweighted models seem to result in narrower confidence intervals and thus also more estimates that are significantly different from zero. Results don't seem to vary much whether imputed data or complete cases are used, nor based on whether the outcome is total IPV or one of the subscales.
 
 Specifications for which there is a significant effect:
 
@@ -247,7 +314,7 @@ results_plot <- comps_results_black |>
   geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25) +
   labs(
     x = "", 
-    title = "Figure 2", 
+    title = "Figure 3", 
     subtitle = "Effect for Black Men by Specification"
   ) +
   coord_cartesian(xlim = c(1, 96)) +
@@ -263,7 +330,7 @@ cowplot::plot_grid(
 )
 ```
 
-Figure 2 shows more variability regarding the direction of the impact of unemployment on IPV perpetrated by Black men: while most specifications suggest that unemployment is associated with lower IPV, almost half of the estimated effects and all of the significant effects are in the opposite direction. Covariate adjusted and survey-weighted models seem to result in more "positive" estimates (meaning that employment is associated with higher IPV), while the converse is true for unadjusted and unweighted models.
+Figure 3 shows more variability regarding the direction of the impact of unemployment on IPV perpetrated by Black men: while most specifications suggest that unemployment is associated with lower IPV, almost half of the estimated effects and all of the significant effects are in the opposite direction. Covariate adjusted and survey-weighted models seem to result in more "positive" estimates (meaning that employment is associated with higher IPV), while the converse is true for unadjusted and unweighted models.
 
 Specifications for which there is a significant effect:
 
@@ -316,7 +383,7 @@ results_plot <- comps_results_interaction |>
   geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25) +
   labs(
     x = "", 
-    title = "Figure 3", 
+    title = "Figure 4", 
     subtitle = "Interaction Effect by Specification"
   ) +
   coord_cartesian(xlim = c(1, 96)) +
@@ -332,7 +399,7 @@ cowplot::plot_grid(
 )
 ```
 
-Figure 3 shows that a most specifications result in a "negative", albeit not significant, interaction effect, such that the difference in IPV between employed and unemployed men is more negative for White men as compared to Black men. Here again we see that models using binarized IPV show the starkest negative interaction effect. The other specification options don't seem to have a systematic effect on the estimated interaction.
+Figure 4 shows that a most specifications result in a "negative", albeit not significant, interaction effect, such that the difference in IPV between employed and unemployed men is more negative for White men as compared to Black men. Here again we see that models using binarized IPV show the starkest negative interaction effect. The other specification options don't seem to have a systematic effect on the estimated interaction.
 
 Specifications for which there is a significant effect:
 
@@ -352,7 +419,7 @@ comps_results_interaction |>
 
 Again, only unweighted models return significant results. Further, we mostly find interactions when looking at total IPV and not controlling, emotional (except for in one specification), or physical IPV.
 
-Next we home in on each outcome in turn (total, emotional, controlling, and physical IPV), without arranging by size of estimate. In each figure, the top plot shows the three effects (Top: effect of unemployment among Black men, Middle: effect of unemployment among White men, Bottom: interaction effect) while the bottom plot describes the corresponding specifications.
+Next we home in on each outcome in turn (total, emotional, controlling, and physical IPV), without arranging by size of estimate. In each figure, the top plot shows the four effects (Top: effect of race (Black), Middle-top: effect of unemployment among Black men, Middle-bottom: effect of unemployment among White men, Bottom: interaction effect) while the bottom plot describes the corresponding specifications.
 
 ```{r}
 # for the general plots, specifications in their original order
@@ -392,10 +459,10 @@ results_plot <- comps_results_total |>
   geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25) +
   labs(
     x = "", 
-    title = "Figure 4", 
+    title = "Figure 5", 
     subtitle = "Marginal & Interaction Effects on Total IPV\nby Specification"
   ) +
-  facet_grid(term ~ ., scales="free_y") +
+  facet_grid(term ~ ., scales="free_y", ) +
   coord_cartesian(xlim = c(1, 24)) +
   theme(
     axis.text.x=element_blank(), #remove x axis labels
@@ -410,7 +477,7 @@ cowplot::plot_grid(
 )
 ```
 
-Figure 4 makes clear that when our outcome is a measure of total IPV, results vary most depending on the model specification (linear, binomial, or binary outcome), with the only significant results coming from binary or binomial unweighted models. Across specifications we see positive effects of unemployment (meaning, lower IPV perpetration) for Black fathers and negative effects for White fathers, though the effect sizes are very small.
+Figure 5 makes clear that when our outcome is a measure of total IPV, results vary most depending on the model specification (linear, binomial, or binary outcome), with the only significant results coming from binary or binomial unweighted models. Across specifications we see positive effects of unemployment (meaning, lower IPV perpetration) for Black fathers and negative effects for White fathers, though the effect sizes are very small.
 
 ## Emotional IPV
 
@@ -422,7 +489,7 @@ results_plot <- comps_results_emotional |>
   geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25) +
   labs(
     x = "", 
-    title = "Figure 5", 
+    title = "Figure 6", 
     subtitle = "Marginal & Interaction Effects on Emotional IPV\nby Specification"
   ) +
   facet_grid(term ~ ., scales="free_y") +
@@ -452,7 +519,7 @@ results_plot <- comps_results_controlling |>
   geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25) +
   labs(
     x = "", 
-    title = "Figure 6", 
+    title = "Figure 7", 
     subtitle = "Marginal & Interaction Effects on Controlling IPV\nby Specification"
   ) +
   facet_grid(term ~ ., scales="free_y") +
