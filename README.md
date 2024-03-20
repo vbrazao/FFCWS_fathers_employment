@@ -25,14 +25,14 @@ The following is an overview of the repository (the hierarchy of the list mirror
 The following is a set of instructions for those who would like to reproduce our analysis.
 
 -   Make sure you have a recent version of RStudio installed (which ships with Quarto already), running R version 4.3.3. (see [here for how to have multiple R versions on your machine and why you might want that](https://groundhogr.com/many)).
--   Make sure you have the `groundhog` package installed (it is used to manage the package versions called by the scripts, to make reproducibility more likely — [read more about the `groundhog` package here](https://datacolada.org/100)).
+-   Make sure you have the `groundhog` package installed (it is used to manage the package versions called by the scripts, to make reproducibility more likely — [read more about the `groundhog` package here](https://datacolada.org/100)). **IMPORTANT: Because we are using the `groundhog` package, you might have to run each script twice - first `groundhog` does some magic, then it asks you in the console to restart R, and then the script should run fully and as normal.**
 -   Make sure you have the `rmarkdown` package installed.
 -   Get a local copy of this repository (e.g., by forking, cloning, or simply downloading the contents).
 -   Get a copy of the FFCWS public-use SAS-format Wave 1 and Wave 2 data, and save the files in the folder `00_data`. Make sure the names of the files correspond to the paths used by the `00_import-data.R` script, namely:
     -   Wave 1: `00_data/FF_wave1_2020v2_SAS.sas7bdat`
     -   Wave 2: `00_data/FF_wave2_2020v2_SAS.sas7bdat`
 -   Open the R Project (double-clicking the `FFCWS_fathers_employment.Rproj` file).
--   Run the script `00_data/00_import-data.R`.
+-   Run the script `00_data/00_import-data.R`. **IMPORTANT: Because we are using the `groundhog` package, you might have to run each script twice - first `groundhog` does some magic, then it asks you in the console to restart R, and then the script should run fully and as normal.**
 -   Run the remaining scripts in order. Beware that the script to generate the multiverse will take a while and use all available cores. To be clear, this is the intended order:
     1.  In folder `01_data-processing/r`, first run `01_delineate-sample.R`, then run `02_wrangle-data.R`.
     2.  In folder `02_analysis-codes/r` run `01_generate-multiverse.R`. Raise the volume on your laptop and wait for the "beep" that will signal the end of the computations.
