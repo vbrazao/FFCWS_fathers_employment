@@ -1,6 +1,6 @@
 # FFCWS: Using the Future of Families Data to Explore the Role of Race and Employment on IPV Perpetration
 
-This repository contains files necessary for inspecting and reproducing analyses conducted by Priya Devendran (Melbourne University) and Vasco Brazão (no affiliation) using the Fragile Families and Child Wellbeing dataset (public use data, waves 1 and 2).
+This repository contains files necessary for inspecting and reproducing analyses conducted by Priya Devendran (Deakin University) and Vasco Brazão (no affiliation) using the Fragile Families and Child Wellbeing dataset (public use data, waves 1 and 2).
 
 (Work in progress)
 
@@ -19,7 +19,7 @@ The following is an overview of the repository (the hierarchy of the list mirror
 -   Folder `02_analysis-codes` contains code and a subfolder for the resulting multiverse analyses.
     -   Folder `r` contains the script.
         -   `01_generate-multiverse.R` takes quite some time to run and, if you let it, will use all the cores on your machine. If it runs successfully, it will save all results from the multiverse analysis in `02_analysis-codes/outputs/multiverse_results.RDS` and also the different parameters separately in `../multiverse_parameters.RDS`.
-    -   Folder `outputs` stores the outputs mentioned above locally and includes a `.gitkeep` file so that the "empty" folder can be part of the GitHub repository. Our outputs from the multiverse analysis are stored separetly on the Open Science Framework because it allows the storage of larger files than this GitHub repository (link to the OSF storage to be added here).
+    -   Folder `outputs` stores the outputs mentioned above locally and includes a `.gitkeep` file so that the "empty" folder can be part of the GitHub repository. Our outputs from the multiverse analysis are stored separately on the Open Science Framework because it allows the storage of larger files than this GitHub repository ([link to the OSF storage](https://osf.io/w6hu5/)).
 -   Folder `03_generated-reports` contains Quarto files and their outputs, as well as the .csl and .bib files required for the multiverse report.
 
 The following is a set of instructions for those who would like to reproduce our analysis.
