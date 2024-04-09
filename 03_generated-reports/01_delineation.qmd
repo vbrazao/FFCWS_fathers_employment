@@ -24,10 +24,6 @@ groundhog::meta.groundhog(groundhog_day)
 groundhog::groundhog.library(pkg = packages, date = groundhog_day)
 
 
-library(here)
-library(tidyverse)
-library(gt)
-
 dat_delineated <- readRDS(file = here::here("01_data-processing", "data_public", "delineation.RDS"))
 ```
 
