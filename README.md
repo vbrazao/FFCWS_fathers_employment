@@ -1,6 +1,8 @@
 # FFCWS: Using the Future of Families Data to Explore the Role of Race and Employment on IPV Perpetration
 
-This repository contains files necessary for inspecting and reproducing analyses conducted by Priya Devendran (Deakin University) and Vasco Brazão (no affiliation) using the Fragile Families and Child Wellbeing dataset (public use data, waves 1 and 2).
+This repository contains files necessary for inspecting and reproducing analyses conducted by Priya Devendran (Deakin University) and Vasco Brazão (independent researcher) using the Fragile Families and Child Wellbeing dataset (public use data, waves 1 and 2).
+
+We thank freelancer Niels Markwat, PhD ([ORCID](https://orcid.org/0000-0002-9884-0707)), for helping us test and improve the computational reproducibility of this repository.
 
 The following is an overview of the repository (the hierarchy of the list mirrors the hierarchy within the directory):
 
@@ -18,7 +20,7 @@ The following is an overview of the repository (the hierarchy of the list mirror
     -   Folder `r` contains the script.
         -   `01_generate-multiverse.R` takes quite some time to run and, if you let it, will use all the cores on your machine. If it runs successfully, it will save all results from the multiverse analysis in `02_analysis-codes/outputs/multiverse_results.RDS` and also the different parameters separately in `../multiverse_parameters.RDS`.
     -   Folder `outputs` stores the outputs mentioned above locally and includes a `.gitkeep` file so that the "empty" folder can be part of the GitHub repository. Our outputs from the multiverse analysis are stored separately on the Open Science Framework because it allows the storage of larger files than this GitHub repository ([link to the OSF storage](https://osf.io/w6hu5/)).
--   Folder `03_generated-reports` contains Quarto files and their outputs, as well as the .csl and .bib files required for the multiverse report.
+-   Folder `03_generated-reports` contains Quarto files and their outputs, as well as the .csl and .bib files required for the multiverse report, `05_reproducibility-report.md`, a Markdown reproducibility report (which can easily be read within GitHub), and the file `Replication_report.pdf` produced by Niels Markwat as part of testing the reproducibility of this repository.
 
 The following is a set of instructions for those who would like to reproduce our analysis.
 
