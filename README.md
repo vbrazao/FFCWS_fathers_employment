@@ -2,8 +2,6 @@
 
 This repository contains files necessary for inspecting and reproducing analyses conducted by Priya Devendran (Deakin University) and Vasco Brazão (no affiliation) using the Fragile Families and Child Wellbeing dataset (public use data, waves 1 and 2).
 
-(Work in progress)
-
 The following is an overview of the repository (the hierarchy of the list mirrors the hierarchy within the directory):
 
 -   Folder `00_data` is meant to facilitate reproducibility. It contains the file `00_import-data.R`. When the correct raw data is saved in this folder, the script can be run to then populate the folder `01_data-processing/data_private` with the raw data file that is then used by the scripts in `01_data-processing/r`.
