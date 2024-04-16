@@ -18,7 +18,7 @@ First, we load the data and the necessary packages:
 
 ```{r}
 # packages ----------------------------------------------------------------
-packages <- c("tidyverse", "here", "marginaleffects")
+packages <- c("tidyverse", "here", "marginaleffects", "modelsummary")
 groundhog_day <- "2024-01-11"
 
 # (install and) load package versions available on the specified day to try
