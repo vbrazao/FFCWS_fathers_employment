@@ -145,7 +145,7 @@ First, we visualize the full multiverse for each outcome (total, emotional, cont
 
 Each of the following four graphs has the same structure. The top panel shows the effect size (which can be interpreted as percentage point differences) with confidence interval for each specification, and is colored according to significance. The bottom panel shows which combination of analytical choices produced the corresponding effect size above.
 
-First, we plot the effect Black race on IPV perpetration, then the effect of unemployment on White IPV perpetration (Figure 2), then the effect of unemployment on Black IPV perpetration (Figure 3), and finally we subtract the third from the second to show the interaction (Figure 4).
+First, we plot the effect of Black race on IPV perpetration, then the effect of unemployment on White IPV perpetration (Figure 2), then the effect of unemployment on Black IPV perpetration (Figure 3), and finally we subtract the third from the second to show the interaction (Figure 4).
 
 ## Effect of race on IPV (Black - White)
 
@@ -479,6 +479,22 @@ cowplot::plot_grid(
 
 Figure 5 makes clear that when our outcome is a measure of total IPV, results vary most depending on the model specification (linear, binomial, or binary outcome), with the only significant results coming from binary or binomial unweighted models. Across specifications we see positive effects of unemployment (meaning, lower IPV perpetration) for Black fathers and negative effects for White fathers, though the effect sizes are very small.
 
+Specifications for which there is a significant effect:
+
+```{r}
+comps_results_total |> 
+  dplyr::filter(
+    p.value < .05
+  ) |> 
+  dplyr::select(
+    names(m_params),
+    estimate, p.value
+  ) |> 
+  rempsyc::nice_table(
+    note = "* p < .05, ** p < .01, *** p < .001"
+  )
+```
+
 ## Emotional IPV
 
 ```{r}
@@ -508,6 +524,22 @@ cowplot::plot_grid(
 ```
 
 When we look at emotional IPV, the multiverse paints a picture of a null effect - all specifications result in estimates close to zero, the majority of which are not significant. Again, weighted binary models show the widest confidence intervals and unweigthed binomial models the narrowest.
+
+Specifications for which there is a significant effect:
+
+```{r}
+comps_results_emotional |> 
+  dplyr::filter(
+    p.value < .05
+  ) |> 
+  dplyr::select(
+    names(m_params),
+    estimate, p.value
+  ) |> 
+  rempsyc::nice_table(
+    note = "* p < .05, ** p < .01, *** p < .001"
+  )
+```
 
 ## Controlling IPV
 
@@ -539,6 +571,22 @@ cowplot::plot_grid(
 
 Controlling IPV also tells a story of no interaction, and the effects for Black and White parents also seem to fall on either side of the 0 line.
 
+Specifications for which there is a significant effect:
+
+```{r}
+comps_results_controlling |> 
+  dplyr::filter(
+    p.value < .05
+  ) |> 
+  dplyr::select(
+    names(m_params),
+    estimate, p.value
+  ) |> 
+  rempsyc::nice_table(
+    note = "* p < .05, ** p < .01, *** p < .001"
+  )
+```
+
 ## Physical IPV
 
 ```{r}
@@ -568,5 +616,21 @@ cowplot::plot_grid(
 ```
 
 Looking just at physical IPV, the interaction becomes even less pronounced, with estimates for the difference between the effect of unemployment on Black and White fathers' IPV perpetration hovering around 0. The marginal effects themselves are almost all small and nonsignificant, indicating that the true effects could be zero or lie on either side of zero.
+
+Specifications for which there is a significant effect:
+
+```{r}
+comps_results_physical |> 
+  dplyr::filter(
+    p.value < .05
+  ) |> 
+  dplyr::select(
+    names(m_params),
+    estimate, p.value
+  ) |> 
+  rempsyc::nice_table(
+    note = "* p < .05, ** p < .01, *** p < .001"
+  )
+```
 
 # References
