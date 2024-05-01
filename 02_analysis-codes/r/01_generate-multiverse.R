@@ -35,7 +35,13 @@ multiverse::inside(
     dat <- branch(missing,
                   "imputed" ~ dat_imputed,
                   "complete_cases" ~ dat_cc
-    ) |> dplyr::filter(f_national_sample == 1)
+    ) |> dplyr::filter(f_national_sample == 1) |> 
+      dplyr::mutate(
+        f_employment_binary = dplyr::case_when(
+          f_employment == "Employed" ~ 1,
+          f_employment == "Unemployed" ~ 0
+        )
+      )
     
     dat <- 
       branch(
@@ -136,6 +142,44 @@ multiverse::inside(
       )
     )
     
+    model.emp <- branch(
+      weights,
+      "weighted" ~ survey::svyglm(
+        formula = f_employment_binary ~ branch(
+          covariates,
+          "adjusted" ~ f_race +
+            f_age + f_education + f_alcohol + f_drugs +
+            f_children + f_poverty + f_incarceration +
+            f_home + f_depression,
+          "unadjusted" ~ f_race
+        ),
+        design = dat_design,
+        family = branch(
+          proportion,
+          "continuous" ~ "gaussian",
+          "binary" ~ "binomial",
+          "binomial" ~ "binomial"
+        )
+      ),
+      "unweighted" ~ glm(
+        formula = f_employment_binary ~ branch(
+          covariates,
+          "adjusted" ~ f_race +
+            f_age + f_education + f_alcohol + f_drugs +
+            f_children + f_poverty + f_incarceration +
+            f_home + f_depression,
+          "unadjusted" ~ f_race
+        ),
+        data = dat,
+        family = branch(
+          proportion,
+          "continuous" ~ "gaussian",
+          "binary" ~ "binomial",
+          "binomial" ~ "binomial"
+        )
+      )
+    )
+    
     comp_race <- marginaleffects::avg_comparisons(
       model.int, 
       variables = "f_race",
@@ -151,6 +195,38 @@ multiverse::inside(
       )
     ) |> broom::tidy() |> 
       dplyr::mutate(comp = "race")
+    
+    comp_employment <- marginaleffects::avg_comparisons(
+      model.emp, 
+      variables = "f_race",
+      vcov = branch(
+        proportion,
+        "continuous" ~ branch(
+          weights,
+          "weighted" ~ NULL,
+          "unweighted" ~ "HC"
+        ),
+        "binary" ~ NULL,
+        "binomial" ~ NULL
+      )
+    ) |> broom::tidy() |> 
+      dplyr::mutate(comp = "employment")
+    
+    comp_emp <- marginaleffects::avg_comparisons(
+      model.int, 
+      variables = "f_employment",
+      vcov = branch(
+        proportion,
+        "continuous" ~ branch(
+          weights,
+          "weighted" ~ NULL,
+          "unweighted" ~ "HC"
+        ),
+        "binary" ~ NULL,
+        "binomial" ~ NULL
+      )
+    ) |> broom::tidy() |> 
+      dplyr::mutate(comp = "emp")
     
     comp_race_emp <- marginaleffects::avg_comparisons(
       model.int, 
@@ -185,7 +261,7 @@ multiverse::inside(
     ) |> broom::tidy() |> 
       dplyr::mutate(comp = "interaction")
     
-    comps <- dplyr::bind_rows(comp_race, comp_race_emp, comp_interaction)
+    comps <- dplyr::bind_rows(comp_race, comp_employment, comp_emp, comp_race_emp, comp_interaction)
   }
 )
 
