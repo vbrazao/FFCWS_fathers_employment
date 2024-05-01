@@ -56,7 +56,7 @@ And the respective indices were calculated by dividing by 12, 6, and 6, respecti
 
 **Question H3**:*Which of these categories best describes your race?*
 
-Answer options: 1 --- White, 2 --- Black, African-American, 3 --- Asian or Pacific Islander, 4 --- American Indian, Eskimo, Aleut, 5 --- Other, not specified, 101 --- Hispanic, -2 --- DON'T KNOW
+Answer options: 1 --- White, 2 --- Black, African-American, 3 --- Asian or Pacific Islander, 4 --- American Indian, Eskimo, Aleut, 5 --- Other, not specified, -2 --- DON'T KNOW
 
 We create the categorical variable `f_race` with levels "White" and "Black", after filtering out those who didn't identify with either. "White" is the reference category.
 
