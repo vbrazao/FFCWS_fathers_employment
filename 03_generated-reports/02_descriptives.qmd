@@ -60,6 +60,15 @@ dat |>
     digits = list(all_continuous() ~ 2, all_categorical() ~ 2),
     type = list(c("ipv_physical_prop", "ipv_controlling_prop", "ipv_emotional_prop") ~ "continuous"), missing = "ifany" 
   ) 
+
+dat |> 
+  labelled::remove_var_label() |> 
+  gtsummary::tbl_summary(
+    statistic = list(all_continuous() ~ "{mean} ({sd}), {min} - {max}"),
+    digits = list(all_continuous() ~ 2, all_categorical() ~ 2),
+    type = list(c("ipv_physical_prop", "ipv_controlling_prop", "ipv_emotional_prop") ~ "continuous"), missing = "ifany", by = "f_race"
+  ) |> 
+  gtsummary::add_p()
 ```
 
 # Descriptives after data imputation
@@ -72,4 +81,13 @@ dat_imputed |>
     digits = list(all_continuous() ~ 2, all_categorical() ~ 2),
     type = list(c("ipv_physical_prop", "ipv_controlling_prop", "ipv_emotional_prop") ~ "continuous") 
   )
+
+dat_imputed |> 
+  labelled::remove_var_label() |> 
+  gtsummary::tbl_summary(
+    statistic = list(all_continuous() ~ "{mean} ({sd}), {min} - {max}"),
+    digits = list(all_continuous() ~ 2, all_categorical() ~ 2),
+    type = list(c("ipv_physical_prop", "ipv_controlling_prop", "ipv_emotional_prop") ~ "continuous"), by = "f_race" 
+  ) |> 
+  gtsummary::add_p()
 ```
