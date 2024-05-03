@@ -71,6 +71,8 @@ dat |>
   gtsummary::add_p()
 ```
 
+When breaking down our descriptives by race, we find significant differences on most variables. Black men tend to be younger, are less likely to have completed high school, report consuming alcohol less often, but drugs more often, display higher levels of depression, are much more likely to be classified as unemployed, are much more likely to have experienced incarceration, have more children, have a lower poverty index (meaning less income), are more likely to rent rather than own their home, and the mothers of their focal child report experiencing more IPV, particularly emotional IPV.
+
 # Descriptives after data imputation
 
 ```{r}
