@@ -39,6 +39,22 @@ dat_weights <- dat |>
     rscales = 1,
     mse = TRUE
   )
+
+dat_all <- readRDS(file = here::here("01_data-processing", "data_private", "data_final_imputed_cases_allnational.RDS"))
+
+dat_all_weights <- dat_all |> 
+  dplyr::filter(f_national_sample == 1 | included == 0) |> 
+  srvyr::as_survey_rep(
+    repweights = dplyr::contains("f1natwt_rep"),
+    weights = f1natwt,
+    combined_weights = TRUE,
+    # why: https://stats.stackexchange.com/questions/409463/duplicating-stata-survey-design-using-svrepdesign-from-survey-package-in-r
+    type = "JKn",
+    scales = 1,
+    rscales = 1,
+    mse = TRUE
+  ) |> 
+  subset(included == 1)
 ```
 
 # Regression Models
@@ -59,7 +75,17 @@ mod_race_ipv <- survey::svyglm(
   family = "gaussian"
 )
 
-summary(mod_race_ipv)
+mod_race_ipv_allnational <- survey::svyglm(
+  formula = ipv_prop ~ f_race + 
+    f_age + f_education + f_alcohol + f_drugs +
+    f_children + f_poverty + f_incarceration +
+    f_home + f_depression,
+  design = dat_all_weights,
+  family = "gaussian"
+)
+
+summary(mod_race_ipv) 
+summary(mod_race_ipv_allnational)
 
 marginaleffects::avg_predictions(mod_race_ipv, variables = "f_race")
 marginaleffects::avg_comparisons(mod_race_ipv, variables = "f_race")
