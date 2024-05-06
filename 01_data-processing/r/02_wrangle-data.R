@@ -52,6 +52,20 @@ baseline_included <- baseline_raw |>
     idnum = as.numeric(idnum)
   )
 
+baseline_excluded <- baseline_raw |> 
+  dplyr::filter(
+    !(idnum %in% included_ids),
+    cf1natsm == 1
+  ) |> 
+  dplyr::mutate(
+    idnum = as.numeric(idnum)
+  ) |> 
+  dplyr::select(
+    idnum,
+    dplyr::starts_with("f1natwt"),
+    -dplyr::contains("natwtx")
+  )
+
 year_one_included <- year_one_raw |> 
   dplyr::filter(
     idnum %in% included_ids
@@ -59,6 +73,8 @@ year_one_included <- year_one_raw |>
   dplyr::mutate(
     idnum = as.numeric(idnum)
   )
+
+
 
 
 # CREATE ONE VARIABLE AT A TIME -------------------------------------------
@@ -648,10 +664,20 @@ recode_outcomes <- function(data){
 data_sets_recoded <- list(dat_full, dat_full_cc, dat_full_imputed) |> 
   purrr::map(.f = recode_outcomes)
 
+dat_full_imputed_allnational <- data_sets_recoded[[3]] |> 
+  dplyr::bind_rows(baseline_excluded) |> 
+  dplyr::mutate(
+    included = dplyr::case_when(
+      idnum %in% as.numeric(included_ids) ~ 1,
+      .default = 0
+    )
+  )
+
 # save the datasets -------------------------------------------------------
 
 saveRDS(data_sets_recoded[[1]], file = here::here("01_data-processing", "data_private", "data_final.RDS"))
 saveRDS(data_sets_recoded[[2]], file = here::here("01_data-processing", "data_private", "data_final_complete_cases.RDS"))
 saveRDS(data_sets_recoded[[3]], file = here::here("01_data-processing", "data_private", "data_final_imputed_cases.RDS"))
+saveRDS(dat_full_imputed_allnational, file = here::here("01_data-processing", "data_private", "data_final_imputed_cases_allnational.RDS"))
 
 rm(list = ls())
