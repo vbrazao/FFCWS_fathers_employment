@@ -501,6 +501,7 @@ comps_results_interaction |>
 
 Again, only unweighted models return significant results. Further, we mostly find interactions when looking at total IPV and not controlling, emotional (except for in one specification), or physical IPV.
 
+
 Next we home in on each outcome in turn (total, emotional, controlling, and physical IPV), without arranging by size of estimate. In each figure, the top plot shows the four effects (Top: effect of race (Black), Middle-top: effect of unemployment among Black men, Middle-bottom: effect of unemployment among White men, Bottom: interaction effect) while the bottom plot describes the corresponding specifications.
 
 ```{r}
@@ -784,6 +785,121 @@ comps_results_employment |>
   rempsyc::nice_table(
     note = "* p < .05, ** p < .01, *** p < .001"
   )
+```
+
+# Supplementary tables
+
+## Effect of race on IPV (Black - White)
+
+All specifications, focusing on the inference about the direction of the effect:
+
+```{r}
+comps_results_race |> 
+  dplyr::select(
+    names(m_params),
+    estimate, p.value
+  ) |> 
+  dplyr::mutate(
+    inference = dplyr::case_when(
+      p.value >= .05 ~ "No difference",
+      p.value < .05 & estimate > 0 ~ "Black higher IPV",
+      p.value < .05 & estimate < 0 ~ "White higher IPV"
+    )
+  ) |> 
+  rempsyc::nice_table(
+    note = "* p < .05, ** p < .01, *** p < .001"
+  ) 
+```
+
+## Effect of Employment on IPV (aggregate, Employed - Unemployed)
+
+All specifications, focusing on the inference about the direction of the effect:
+
+```{r}
+comps_results_emp|> 
+  dplyr::select(
+    names(m_params),
+    estimate, p.value
+  ) |> 
+  dplyr::mutate(
+    inference = dplyr::case_when(
+      p.value >= .05 ~ "No difference",
+      p.value < .05 & estimate > 0 ~ "Employed higher IPV",
+      p.value < .05 & estimate < 0 ~ "Unemployed higher IPV"
+    )
+  ) |> 
+  rempsyc::nice_table(
+    note = "* p < .05, ** p < .01, *** p < .001"
+  ) 
+```
+## Race and Employment on IPV
+### White (Employed - Unemployed)
+
+All specifications, focusing on the inference about the direction of the effect:
+
+```{r}
+comps_results_white|> 
+  dplyr::select(
+    names(m_params),
+    estimate, p.value
+  ) |> 
+  dplyr::mutate(
+    inference = dplyr::case_when(
+      p.value >= .05 ~ "No difference",
+      p.value < .05 & estimate > 0 ~ "Employed higher IPV",
+      p.value < .05 & estimate < 0 ~ "Unemployed higher IPV"
+    )
+  ) |> 
+  rempsyc::nice_table(
+    note = "* p < .05, ** p < .01, *** p < .001"
+  ) 
+```
+
+### Black (Employed - Unemployed)
+
+All specifications, focusing on the inference about the direction of the effect:
+
+```{r}
+comps_results_black|> 
+  dplyr::select(
+    names(m_params),
+    estimate, p.value
+  ) |> 
+  dplyr::mutate(
+    inference = dplyr::case_when(
+      p.value >= .05 ~ "No difference",
+      p.value < .05 & estimate > 0 ~ "Employed higher IPV",
+      p.value < .05 & estimate < 0 ~ "Unemployed higher IPV"
+    )
+  ) |> 
+  rempsyc::nice_table(
+    note = "* p < .05, ** p < .01, *** p < .001"
+  ) 
+```
+
+
+### Interaction (White (Emp - Unemp) - Black (Emp - Unemp))
+
+All specifications, focusing on the inference about the direction of the effect:
+
+(Reminder for interpretation: a "positive" interaction means that the difference "Employed - Unemployed" is larger for White men; a "negative" interaction means that that same difference is larger for Black men)
+
+```{r}
+comps_results_interaction |> 
+  dplyr::select(
+    names(m_params),
+    estimate, p.value
+  ) |> 
+  dplyr::mutate(
+    inference = dplyr::case_when(
+      p.value >= .05 ~ "No interaction",
+      p.value < .05 & estimate > 0 ~ "Positive interaction",
+      p.value < .05 & estimate < 0 ~ "Negative interaction"
+    )
+  ) |> 
+  rempsyc::nice_table(
+    note = "* p < .05, ** p < .01, *** p < .001"
+  ) 
 ```
 
 # References
