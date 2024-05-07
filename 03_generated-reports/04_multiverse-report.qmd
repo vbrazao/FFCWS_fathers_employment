@@ -228,6 +228,7 @@ comps_results_race |>
 ```
 
 ## Effect of Employment on IPV (aggregate, Employed - Unemployed)
+
 ```{r}
 comps_results_emp <- comps_results_renamed |> 
   dplyr::filter(term == "E - U") |> 
@@ -294,6 +295,7 @@ comps_results_emp |>
 ```
 
 ## Race and Employment on IPV
+
 ### White (Employed - Unemployed)
 
 ```{r}
@@ -500,7 +502,6 @@ comps_results_interaction |>
 ```
 
 Again, only unweighted models return significant results. Further, we mostly find interactions when looking at total IPV and not controlling, emotional (except for in one specification), or physical IPV.
-
 
 Next we home in on each outcome in turn (total, emotional, controlling, and physical IPV), without arranging by size of estimate. In each figure, the top plot shows the four effects (Top: effect of race (Black), Middle-top: effect of unemployment among Black men, Middle-bottom: effect of unemployment among White men, Bottom: interaction effect) while the bottom plot describes the corresponding specifications.
 
@@ -832,7 +833,9 @@ comps_results_emp|>
     note = "* p < .05, ** p < .01, *** p < .001"
   ) 
 ```
+
 ## Race and Employment on IPV
+
 ### White (Employed - Unemployed)
 
 All specifications, focusing on the inference about the direction of the effect:
@@ -876,7 +879,6 @@ comps_results_black|>
     note = "* p < .05, ** p < .01, *** p < .001"
   ) 
 ```
-
 
 ### Interaction (White (Emp - Unemp) - Black (Emp - Unemp))
 
