@@ -11,7 +11,7 @@ execute:
 ```{r setup}
 
 # packages ----------------------------------------------------------------
-packages <- c("tidyverse", "here", "gtsummary", "labelled")
+packages <- c("tidyverse", "here", "gtsummary", "labelled", "survey", "srvyr")
 groundhog_day <- "2024-01-11"
 
 # (install and) load package versions available on the specified day to try
@@ -31,39 +31,68 @@ benelib::theme_gtsummary_apa(set_theme = TRUE)
 dat <- readRDS(file = here::here("01_data-processing", "data_private", "data_final.RDS")) |> 
   select(
     starts_with("f_"),
+    starts_with("f1natwt"),
     ends_with("prop"),
     -contains("sample")
   ) |> 
   dplyr::mutate(
     ipv_binary = ifelse(ipv_prop > 0, 1, 0)
+  ) |> 
+  labelled::remove_var_label()
+
+dat_weights <- dat |> 
+  srvyr::as_survey_rep(
+    repweights = dplyr::contains("f1natwt_rep"),
+    weights = f1natwt,
+    combined_weights = TRUE,
+    # why: https://stats.stackexchange.com/questions/409463/duplicating-stata-survey-design-using-svrepdesign-from-survey-package-in-r
+    type = "JKn",
+    scales = 1,
+    rscales = 1,
+    mse = TRUE
   )
 
 dat_imputed <- readRDS(file = here::here("01_data-processing", "data_private", "data_final_imputed_cases.RDS")) |> 
   select(
     starts_with("f_"),
+    starts_with("f1natwt"),
     ends_with("prop"),
     -contains("sample")
   )|> 
   dplyr::mutate(
     ipv_binary = ifelse(ipv_prop > 0, 1, 0)
-  )
+  ) |> 
+  labelled::remove_var_label()
 
+dat_imputed_weights <- dat_imputed |> 
+    srvyr::as_survey_rep(
+    repweights = dplyr::contains("f1natwt_rep"),
+    weights = f1natwt,
+    combined_weights = TRUE,
+    # why: https://stats.stackexchange.com/questions/409463/duplicating-stata-survey-design-using-svrepdesign-from-survey-package-in-r
+    type = "JKn",
+    scales = 1,
+    rscales = 1,
+    mse = TRUE
+  )
 ```
 
 # Descriptives before data imputation
 
+## Unweighted
+
 ```{r}
 dat |> 
-  labelled::remove_var_label() |> 
   gtsummary::tbl_summary(
+    include = -starts_with("f1natwt"),
     statistic = list(all_continuous() ~ "{mean} ({sd}), {min} - {max}"),
     digits = list(all_continuous() ~ 2, all_categorical() ~ 2),
     type = list(c("ipv_physical_prop", "ipv_controlling_prop", "ipv_emotional_prop") ~ "continuous"), missing = "ifany" 
   ) 
 
 dat |> 
-  labelled::remove_var_label() |> 
   gtsummary::tbl_summary(
+    include = -starts_with("f1natwt"),
     statistic = list(all_continuous() ~ "{mean} ({sd}), {min} - {max}"),
     digits = list(all_continuous() ~ 2, all_categorical() ~ 2),
     type = list(c("ipv_physical_prop", "ipv_controlling_prop", "ipv_emotional_prop") ~ "continuous"), missing = "ifany", by = "f_race"
@@ -73,11 +102,24 @@ dat |>
 
 When breaking down our descriptives by race, we find significant differences on most variables. Black men tend to be younger, are less likely to have completed high school, report consuming alcohol less often, but drugs more often, display higher levels of depression, are much more likely to be classified as unemployed, are much more likely to have experienced incarceration, have more children, have a lower poverty index (meaning less income), are more likely to rent rather than own their home, and the mothers of their focal child report experiencing more IPV, particularly emotional IPV.
 
+## Weighted
+
+```{r}
+dat_weights |> 
+  gtsummary::tbl_svysummary(
+    include = -starts_with("f1natwt"),
+    statistic = list(all_continuous() ~ "{mean} ({sd}), {min} - {max}"),
+    digits = list(all_continuous() ~ 2, all_categorical() ~ 2),
+    type = list(c("ipv_physical_prop", "ipv_controlling_prop", "ipv_emotional_prop") ~ "continuous")
+  ) 
+```
+
 # Descriptives after data imputation
+
+## Unweighted
 
 ```{r}
 dat_imputed |> 
-  labelled::remove_var_label() |> 
   gtsummary::tbl_summary(
     statistic = list(all_continuous() ~ "{mean} ({sd}), {min} - {max}"),
     digits = list(all_continuous() ~ 2, all_categorical() ~ 2),
@@ -85,11 +127,22 @@ dat_imputed |>
   )
 
 dat_imputed |> 
-  labelled::remove_var_label() |> 
   gtsummary::tbl_summary(
     statistic = list(all_continuous() ~ "{mean} ({sd}), {min} - {max}"),
     digits = list(all_continuous() ~ 2, all_categorical() ~ 2),
     type = list(c("ipv_physical_prop", "ipv_controlling_prop", "ipv_emotional_prop") ~ "continuous"), by = "f_race" 
   ) |> 
   gtsummary::add_p()
+```
+
+## Weighted
+
+```{r}
+dat_imputed_weights |> 
+  gtsummary::tbl_svysummary(
+    include = -starts_with("f1natwt"),
+    statistic = list(all_continuous() ~ "{mean} ({sd}), {min} - {max}"),
+    digits = list(all_continuous() ~ 2, all_categorical() ~ 2),
+    type = list(c("ipv_physical_prop", "ipv_controlling_prop", "ipv_emotional_prop") ~ "continuous")
+  )
 ```
