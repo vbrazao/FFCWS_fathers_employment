@@ -121,6 +121,7 @@ dat_weights |>
 ```{r}
 dat_imputed |> 
   gtsummary::tbl_summary(
+    include = -starts_with("f1natwt"),
     statistic = list(all_continuous() ~ "{mean} ({sd}), {min} - {max}"),
     digits = list(all_continuous() ~ 2, all_categorical() ~ 2),
     type = list(c("ipv_physical_prop", "ipv_controlling_prop", "ipv_emotional_prop") ~ "continuous") 
@@ -128,6 +129,7 @@ dat_imputed |>
 
 dat_imputed |> 
   gtsummary::tbl_summary(
+    include = -starts_with("f1natwt"),
     statistic = list(all_continuous() ~ "{mean} ({sd}), {min} - {max}"),
     digits = list(all_continuous() ~ 2, all_categorical() ~ 2),
     type = list(c("ipv_physical_prop", "ipv_controlling_prop", "ipv_emotional_prop") ~ "continuous"), by = "f_race" 
