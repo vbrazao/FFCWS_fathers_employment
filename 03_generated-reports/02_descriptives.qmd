@@ -89,7 +89,11 @@ dat |>
     digits = list(all_continuous() ~ 2, all_categorical() ~ 2),
     type = list(c("ipv_physical_prop", "ipv_controlling_prop", "ipv_emotional_prop") ~ "continuous"), missing = "ifany" 
   ) 
+```
 
+### Comparing Black and White fathers
+
+```{r}
 dat |> 
   gtsummary::tbl_summary(
     include = -starts_with("f1natwt"),
@@ -126,7 +130,11 @@ dat_imputed |>
     digits = list(all_continuous() ~ 2, all_categorical() ~ 2),
     type = list(c("ipv_physical_prop", "ipv_controlling_prop", "ipv_emotional_prop") ~ "continuous") 
   )
+```
 
+### Comparing Black and White fathers
+
+```{r}
 dat_imputed |> 
   gtsummary::tbl_summary(
     include = -starts_with("f1natwt"),
