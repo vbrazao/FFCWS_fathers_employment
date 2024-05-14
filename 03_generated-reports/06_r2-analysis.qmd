@@ -1,0 +1,109 @@
+---
+title: "IPV Perpetration according to race and employment status"
+subtitle: "An intersectional analysis using FFCWS data"
+format: docx
+editor: visual
+execute:
+  message: false
+  warning: false
+---
+
+First, we load the data and the necessary packages:
+
+```{r}
+# packages ----------------------------------------------------------------
+packages <- c("tidyverse", "here", "marginaleffects", "survey", "srvyr", "modelsummary")
+groundhog_day <- "2024-01-11"
+
+# (install and) load package versions available on the specified day to try
+# to ensure reproducibility
+
+library(groundhog)
+
+groundhog::meta.groundhog(groundhog_day)
+
+groundhog::groundhog.library(pkg = packages, date = groundhog_day)
+
+
+dat <- readRDS(file = here::here("01_data-processing", "data_private", "data_final_imputed_cases.RDS"))
+
+dat_weights <- dat |> 
+  dplyr::filter(f_national_sample == 1) |> 
+  srvyr::as_survey_rep(
+    repweights = dplyr::contains("f1natwt_rep"),
+    weights = f1natwt,
+    combined_weights = TRUE,
+    # why: https://stats.stackexchange.com/questions/409463/duplicating-stata-survey-design-using-svrepdesign-from-survey-package-in-r
+    type = "JKn",
+    scales = 1,
+    rscales = 1,
+    mse = TRUE
+  )
+```
+
+We create 6 models - three weighted, three unweighted:
+
+```{r}
+m1.simple <- lm(
+  ipv_prop ~ f_age,
+  data = dat
+)
+
+m1.weighted <- survey::svyglm(
+  ipv_prop ~ f_age,
+  design = dat_weights
+)
+
+m2.simple <- lm(
+  ipv_prop ~ f_age + f_race,
+  data = dat
+)
+
+m2.weighted <- survey::svyglm(
+  ipv_prop ~ f_age + f_race,
+  design = dat_weights
+)
+
+m3.simple <- lm(
+  ipv_prop ~ f_age + f_race + f_employment,
+  data = dat
+)
+
+m3.weighted <- survey::svyglm(
+  ipv_prop ~ f_age + f_race + f_employment,
+  design = dat_weights
+)
+
+all.r2 <- list(m1.simple, m1.weighted, m2.simple, m2.weighted, m3.simple, m3.weighted) |> 
+  purrr::map(
+    .f = ~ modelsummary::get_gof(.x) |> as.tibble() |> select(dplyr::contains("r.squared"))
+  ) |> list_rbind()
+
+all.r2 |> mutate(
+  model = c("m1.simple", "m1.weighted", "m2.simple", "m2.weighted", "m3.simple", "m3.weighted")
+) |> dplyr::relocate(model)
+
+
+# for our survey models, we want modelsummary() to retrieve the AIC value that is stored in the model object
+# instead of trying to calculate it as there's some sort of bug there (still to ask on StackOverflow about this)
+AIC.svrepglm <- function(model){
+  AIC <- model$aic
+  
+  list(AIC = AIC)
+}
+
+
+modelsummary::modelsummary(
+  models = list(
+    "A" = m1.simple, 
+    "AR" = m2.simple, 
+    "ARE" = m3.simple, 
+    "A" = m1.weighted, 
+    "AR" = m2.weighted, 
+    "ARE" = m3.weighted
+  ), stars = TRUE, output = "gt", fmt = fmt_statistic("rmse" = 5)) |> 
+  gt::tab_spanner(label = "Unweighted", columns = 2:4) |> 
+  gt::tab_spanner(label = "Weighted", columns = 5:7)
+
+
+```
