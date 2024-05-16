@@ -13,7 +13,7 @@ First, we load the data and the necessary packages:
 ```{r}
 # packages ----------------------------------------------------------------
 packages <- c("tidyverse", "here", "marginaleffects", "survey", "srvyr", "modelsummary")
-groundhog_day <- "2024-01-11"
+groundhog_day <- "2024-04-22"
 
 # (install and) load package versions available on the specified day to try
 # to ensure reproducibility
@@ -271,7 +271,7 @@ modelsummary::modelsummary(
   ),
   estimate = "estimate",
   stars = TRUE,
-  statistic = c("conf.int", "p.value")
+  statistic = c("conf.int", "p.value"), output = "gt", fmt = fmt_statistic("rmse" = 5)
 )
 ```
 
