@@ -1,0 +1,124 @@
+---
+title: "WIP"
+subtitle: ""
+format: html
+editor: visual
+execute:
+  message: false
+  warning: false
+---
+
+First, we load the data and the necessary packages:
+
+```{r}
+# packages ----------------------------------------------------------------
+packages <- c("tidyverse", "here", "marginaleffects", "modelsummary")
+groundhog_day <- "2024-04-22"
+
+# (install and) load package versions available on the specified day to try
+# to ensure reproducibility
+
+library(groundhog)
+
+groundhog::meta.groundhog(groundhog_day)
+
+groundhog::groundhog.library(pkg = packages, date = groundhog_day)
+
+
+dat <- readRDS(file = here::here("01_data-processing", "data_private", "data_final_imputed_cases.RDS"))
+```
+
+explain how "contrasts" are calculated, e.g., the interaction effect of employment
+
+```{r}
+mod_race_employment_interaction_ipv <- glm(
+  formula = ipv_prop ~ f_race * f_employment +
+    f_age + f_education + f_alcohol + f_drugs +
+    f_children + f_poverty + f_incarceration +
+    f_home + f_depression,
+  data = dat,
+  family = "gaussian"
+)
+
+summary(mod_race_employment_interaction_ipv)
+```
+
+```{r}
+datagrid(
+  model = mod_race_employment_interaction_ipv,
+  f_race = c("White", "Black"),
+  grid_type = "counterfactual"
+)
+
+predicted <- predictions(
+  model = mod_race_employment_interaction_ipv,
+  newdata = datagrid(
+    f_race = c("White", "Black"),
+    grid_type = "counterfactual"
+  )
+) |> 
+  select(rowidcf, estimate, f_employment, f_race) |> 
+  pivot_wider(
+    names_from = f_race,
+    values_from = estimate,
+    id_cols = c(rowidcf, f_employment)
+  ) |> 
+  mutate(effect = Black - White) |> 
+  summarise(
+    mean = mean(effect),
+    sd = sd(effect),
+    .by = f_employment
+  )
+```
+
+
+
+```{r}
+marginaleffects::avg_predictions(
+  mod_race_employment_interaction_ipv, 
+  variables = c("f_race", "f_employment"), vcov = "HC"
+) 
+
+marginaleffects::avg_predictions(
+  mod_race_employment_interaction_ipv, 
+  variables = c("f_race", "f_employment"), vcov = "HC"
+) |> 
+  dplyr::mutate(
+    across(.cols = -dplyr::starts_with("f_"), .fns = as.numeric)
+  ) |> 
+  ggplot(aes(x = f_race, y = estimate, ymin = conf.low, ymax = conf.high, color = f_employment)) +
+  geom_pointrange(position = position_dodge(width = .5)) +
+  xlab("Race") +
+  ylab("IPV Index") +
+  scale_color_viridis_d(option = "magma", begin = .2, end = .8)
+  
+
+marginaleffects::avg_comparisons(
+  mod_race_employment_interaction_ipv, 
+  variables = "f_race", 
+  by = "f_employment", vcov = "HC"
+)
+
+# (BE - WE) - (BU - WU)
+marginaleffects::avg_comparisons(
+  mod_race_employment_interaction_ipv,
+  variables = "f_race", 
+  by = "f_employment",
+  hypothesis = "pairwise", vcov = "HC"
+)
+
+
+marginaleffects::avg_comparisons(
+  mod_race_employment_interaction_ipv, 
+  variables = "f_employment", 
+  by = "f_race", vcov = "HC"
+)
+
+# (WE - WU) - (BE - BU) (simply the other comparison multiplied by -1)
+marginaleffects::avg_comparisons(
+  mod_race_employment_interaction_ipv,
+  variables = "f_employment", by = "f_race",
+  hypothesis = "pairwise", vcov = "HC"
+)
+
+```

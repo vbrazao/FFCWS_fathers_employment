@@ -1,6 +1,10 @@
 ---
 title: "Father's Analysis - Multiverse report"
-format: html
+format: 
+  html:
+    toc: true
+  docx: 
+    toc: false
 editor: visual
 execute:
   echo: false
@@ -39,6 +43,11 @@ m_params <- readRDS(here::here("02_analysis-codes", "outputs", "multiverse_param
 
 # functions
 
+# for digits in the table
+format.fun <- function(x) {
+  formatC(x, format = "f", digits = 3)
+}
+
 # to create the table
 make_table <- function(results, only.sig = FALSE, outcome.omit = FALSE){
   
@@ -52,39 +61,44 @@ make_table <- function(results, only.sig = FALSE, outcome.omit = FALSE){
   if(outcome.omit){
     results <- results |> 
       dplyr::select(
-      names(m_params), -outcome,
-      estimate, p.value
+        universe = .universe,
+        names(m_params), -outcome,
+        estimate, p.value
     )
   } else {
     results <- results |> 
       dplyr::select(
-      names(m_params),
-      estimate, p.value
+        universe = .universe,
+        names(m_params),
+        estimate, p.value
     )
   }
   
   tab <- results |> 
     dplyr::rename_with(
       .fn = ~ paste0("Specification option.", .x),
-      .cols = -c(estimate, p.value)
+      .cols = -c(universe, estimate, p.value)
     ) 
+  
+  estimate.col <- if(outcome.omit) 6 else 7
   
   tab %>% 
     rempsyc::nice_table(
       .,
       note = "* p < .05, ** p < .01, *** p < .001",
-      separate.header = TRUE, italics = seq(.)
+      separate.header = TRUE, italics = seq(.),
+      col.format.custom = estimate.col, format.custom = "format.fun"
     )
 }
 
 # to create the specifications plots
-make_spec_plot <- function(results, outcome.omit = TRUE){
+make_spec_plot <- function(results, outcome.omit = TRUE, ...){
   
   if(outcome.omit){
     results <- results |>
-      dplyr::select(.universe, all_of(names(m_params)), significant, -outcome) |> 
-      tidyr::pivot_longer(cols = -c(.universe, significant), names_to = "parameter_name", values_to =  "parameter_option") |> 
-      dplyr::select( .universe, parameter_name, parameter_option, significant) |> 
+      dplyr::select(order, all_of(names(m_params)), significant, -outcome) |> 
+      tidyr::pivot_longer(cols = -c(order, significant), names_to = "parameter_name", values_to =  "parameter_option") |> 
+      dplyr::select( order, parameter_name, parameter_option, significant) |> 
       dplyr::filter(parameter_name != "outcome") |> 
       dplyr::mutate(
         parameter_name = factor(parameter_name) |> 
@@ -92,9 +106,9 @@ make_spec_plot <- function(results, outcome.omit = TRUE){
       ) 
   } else {
     results <- results |>
-      dplyr::select(.universe, all_of(names(m_params)), significant) |> 
-      tidyr::pivot_longer(cols = -c(.universe, significant), names_to = "parameter_name", values_to =  "parameter_option") |> 
-      dplyr::select( .universe, parameter_name, parameter_option, significant) |> 
+      dplyr::select(order, all_of(names(m_params)), significant) |> 
+      tidyr::pivot_longer(cols = -c(order, significant), names_to = "parameter_name", values_to =  "parameter_option") |> 
+      dplyr::select( order, parameter_name, parameter_option, significant) |> 
       dplyr::mutate(
         parameter_name = factor(parameter_name) |> 
           forcats::fct_relevel("covariates", "weights", "proportion", "missing" )
@@ -103,42 +117,65 @@ make_spec_plot <- function(results, outcome.omit = TRUE){
   
   plot <- results |> 
     ggplot() +
-    geom_point( aes(x = .universe, y = parameter_option, color = significant), size = 0.5 ) +
-    labs( x = "universe #", y = "specification option") + 
+    geom_point( aes(x = order, y = parameter_option, color = significant), size = 0.5 ) +
+    labs( x = "", y = "specification option") + 
     facet_grid(parameter_name ~ ., space="free_y", scales="free_y", switch="y") +
-    coord_cartesian(xlim = c(1, max(results$.universe)))  +
+    coord_cartesian(xlim = c(1, max(results$order)))  +
     scale_color_viridis_d(drop = FALSE, option = "plasma", end = .5) + 
     theme(
       strip.background = element_rect(fill = NA, colour = NA),
       strip.text.y = element_blank(), 
-      legend.position = "none"
+      legend.position = "none",
+      axis.text.x = element_blank(),
+      axis.ticks.x=element_blank()
         )
   
   return(plot)
 }
 
 # to create the results plots 
-make_res_plot <- function(results){
-  results |> 
-    ggplot(aes(x = .universe, y = estimate, ymax = conf.high, ymin = conf.low, color = significant)) +
-    geom_point() +
-    geom_errorbar() +
-    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25) +
-    labs(
-      x = "",
-    ) +
-    scale_color_viridis_d(drop = FALSE, option = "plasma", end = .5) +
-    coord_cartesian(xlim = c(1, max(results$.universe))) +
-    theme(
-      axis.text.x=element_blank(), #remove x axis labels
-      axis.ticks.x=element_blank()
-    )
+make_res_plot <- function(results, facet.term = FALSE, ...){
+
+  if(facet.term){
+    plot <- results |> 
+      ggplot(aes(x = order, y = estimate, ymax = conf.high, ymin = conf.low, color = significant)) +
+      geom_point() +
+      geom_errorbar() +
+      geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25) +
+      labs(
+        x = "",
+      ) +
+      scale_color_viridis_d(drop = FALSE, option = "plasma", end = .5) + 
+      facet_grid(term ~ ., scales="free_y") +
+      coord_cartesian(xlim = c(1, max(results$.universe))) +
+      theme(
+        axis.text.x=element_blank(), #remove x axis labels
+        axis.ticks.x=element_blank()
+      ) 
+  } else {
+    plot <- results |> 
+      ggplot(aes(x = order, y = estimate, ymax = conf.high, ymin = conf.low, color = significant)) +
+      geom_point() +
+      geom_errorbar() +
+      geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25) +
+      labs(
+        x = "",
+      ) +
+      scale_color_viridis_d(drop = FALSE, option = "plasma", end = .5) + 
+      coord_cartesian(xlim = c(1, max(results$order))) +
+      theme(
+        axis.text.x=element_blank(), #remove x axis labels
+        axis.ticks.x=element_blank()
+      ) 
+  }
+  
+  return(plot)
 }
 
 # to create the two panel plots
 make_plot <- function(results, ...){
   plot <- cowplot::plot_grid(
-    make_res_plot(results), 
+    make_res_plot(results, ...), 
     make_spec_plot(results, ...), 
     axis = "bltr",  align = "v", ncol = 1, 
     rel_heights = c(1, 1)
@@ -149,9 +186,77 @@ make_plot <- function(results, ...){
 
 ```
 
-# Multiverse results - Visualizations
+To arrive at our main results, we had to make many decisions that were not fully justified by theoretical or statistical considerations — other competent researchers could have chosen differently and justified their choices equally well. To illustrate the variety of choices we made and examine the robustness of our results to these choices, we conducted a multiverse analysis, reported in this document. A multiverse analysis involves specifying different choice points in the preparation and analysis of data with respect to some question and running and reporting all analyses rather than a single path [@steegen2016]. In this document, we first describe the analysis options that comprise our multiverse analysis, then describe some conclusions based on the analysis, and finally present the multiverse results in several graphs and tables.
+
+# Analysis options
+
+## Model for proportions
+
+Our main analysis relies on models which predict a proportion (the mother's IPV score, which can range from 0 to 24 when considering all items, and which we turned into a proportion by dividing the score by the maximum possible score). This type of data is often modelled with a binomial GLM, where the outcome is the proportion itself, and a \`weights\` argument specifies how many "trials" the proportion is out of or, in our case, the maximum possible score.
+
+Another option is to use a "linear probability model", which just means to model a proportion (which necessarily cannot be smaller than 0 or greater than 1) as if it was normally distributed (which by definition is continuous and encompasses the entire real number line). These models come with advantages (e.g., interpretability of coefficients) and disadvantages (e.g., possibility of predicting data points outside the accepted range). In keeping with common practice for the Future of Families dataset, and because of the additional arbitrariness of binarizing these variables, our main manuscript reports the linear analysis. To complement our linear analysis, we also ran logistic regressions after first binarizing the variables. Binary IPV was 0 if the index was 0 and 1 if the index was above 0, and the same logic was applied to the IPV subscales.
+
+Thus, we used three different models for proportions in this multiverse analysis: "binomial" (corresponding to a weighted logit regression), "continuous" (corresponding to a linear regression), and "binary" (corresponding to a logit regression on the binarized IPV index). An exception is the first reported model, which predicts a binary indicator of employment. For this model there was no reason to explore the "binomial" option, as the outcome is already binary. Therefore, for that model only, we just present results from the "binary" and "continuous" specifications.
+
+## Missing data
+
+A common way to deal with missing data in the Future of Families dataset is by analysing only complete cases. However, this approach can result in a big loss of information and less precise estimates. Thus, we used a dataset where missing values were imputed using the `missForest` algorithm for our main analysis and complemented it with a complete case analysis in the multiverse.
+
+A further option that could be explored would be a more principled missing data analysis, where the imputation method (or lack thereof) is decided based on documented assumptions about the causes of missingness [@daniel2012; @hughes2019].
+
+## Sampling weights
+
+The Future of Families survey has a complex design and is not representative of the US population, which is why the dataset comes with sampling weights which, in principle, should allow us to make the estimates nationally representative. It is clear that weights should be incorporated into the analysis when we are trying to estimate simple quantities (e.g, means or proportions) and use the sample to make inferences about the population. However, the use of survey weights for causal inference problems is not straightforward, and there is no guarantee that using the weights makes the estimate less rather than more biased [see, e.g., @schuessler2023, @solon2015]. Thus, we ran our models with and without using the national weights provided in the Future of Families data. We used sampling weights for the main analysis reported in the manuscript.
+
+A more laborious but also more principled approach would be to generate graphical causal models that incorporate our assumptions about the causal structure of the variables as well as the sampling design in order to determine how best to account for the sampling design for any given causal inference question [@schuessler2023].
+
+## Covariate adjustment
+
+It is common in the social sciences to statistically adjust for potential confounders when analyzing observational data. However, this likely does more harm than good [@wysocki2022], as a causal effect can just as easily be confounded as deconfounded by the addition of a covariate. Thus, in addition to running models with covariate adjustment, which are common practice when examining effects of race with the Future of Families data, we examined the effects without covariate adjustment.
+
+Here, too, a more principled approach would clearly map out the assumed causal relationships between observed and unobserved covariates, test the testable implications of any resulting causal models, and use all of that information to derive a well-justified causal estimate.
+
+## Outcome
+
+Our primary interest was women's total IPV scores, but we were also interested in exploring three IPV subscales (emotional, controlling, and physical IPV). Thus we ran each analysis specification three additional times, using each IPV subscale as an outcome at a time.This option does not apply to the first model presented, which explores the effect of race on employment.
+
+```{r}
+universes <- tidyr::expand_grid(
+  missing = c("Imputed", "Complete cases"),
+  proportion = c("Continuous", "Binary", "Binomial"),
+  weights = c("Weighted", "Unweighted"),
+  covariates = c("Adjusted", "Unadjusted"),
+  outcome = c("Total", "Physical", "Emotional", "Controlling")
+) %>%
+  dplyr::mutate(
+    universe = 1:nrow(.)
+  ) |> 
+  dplyr::relocate(universe)
+
+universes |> gt::gt()
+```
+
+# Multiverse results - Summary
+
+The multiverse analysis reveals that our results are somewhat sensitive to different specifications. The effect of race on employment was most clear, as all estimates indicate that Black men are less likely to be employed. Regarding the effect of race on IPV, all significant estimates point to women partnered with Black men experiencing more violence, but many specifications resulted in non-significant estimates, including some point estimates in the opposite direction. We find a similar pattern for the effect of employment on IPV (adjusted for race): all significant estimates point to women partnered with unemployed men experiencing more violence, but many specifications resulted in non-significant estimates, including some point estimates in the opposite direction. Understanding the interaction between employment and race proved less clear. While the effect of employment for White men was clear — all significant estimates suggest that for women partnered with White men, those partnered with employed men report lower levels of IPV — the same cannot be said for the effect of employment for Black men. The estimated effect varied quite a lot, with few significant estimates in both directions: for women partnered with Black men, those partnered with employed men are found to report lower or higher levels of IPV, depending on the specification. Almost all estimates of the interaction effect were negative, and all significant estimates were negative: this implies that the difference in IPV between employed and unemployed Black men is greater (more positive) than the difference in IPV between employed and unemployed White men (see @nte-interaction for a step-by-step illustration of how the interaction effect is calculated).
+
+In the following sections, we present and describe some figures and tables that highlight how our results depend on the specification.
+
+Given the discussion above about the legitimacy of each analytic choice, we don't think it sensible to summarize across specifications to arrive at an "overall" interaction effect between race and employment. For example, summarizing the models which control for all covariates along with the models that don't control for covariates does not make sense, as covariate adjustment changes the meaning of the estimate of the effect(s) of race on IPV, so there is no meaningful way they could be averaged. Instead, we consider this process as a pedagogical tool. As Julia Rohrer put it on the 100% CI blog [@rohrer2021]:
+
+> In the end, the multiverse may prove to be most powerful as a pedagogical tool. \[...\] Multiverse analysis can raise awareness of how data analytic flexibility can be exploited. It can also alert us to gaps in our knowledge. Gaps in our knowledge about the underlying causal web: Is including that covariate arbitrary or not? What does it mean if results hinge on it? Gaps in our knowledge about statistics: Can we expect these types of models to return the same answer? Under which conditions would they diverge? Gaps in our knowledge about measurement and conceptualization: Does it make sense to expect the same result for these different operationalizations of the outcome? What does it mean if results vary? We have now closed the loop and are [back to the original multiverse paper](https://journals.sagepub.com/doi/10.1177/1745691616658637), in which the authors write: "The real conclusion of the multiverse analysis is that there is a gaping hole in theory or in measurement."
+
+# Multiverse results - Visualization & Description
+
+In this section, we visualize and describe the multiverse results for each model in turn.
+
+First, using a model that predicts employment, we test the effect of race on employment for different specifications. The graphs shown in @fig-emp-race display the estimated effect of race on employment with associated confidence interval in the top panel for the combination of specification options directly below (in the bottom panel). Points and confidence intervals are colored based on whether the estimate is statistically significantly different from 0 — which, in this case, all estimates are.
+
+The subsequent sections are all structured similarly. The title of the section corresponds to the hypothesis being tested in that section, and the formulation of the hypothesis as stated in the main manuscript is repeated right below. Next, we see a two-panel figure where the top panel shows the estimated effect with confidence interval that corresponds to the combination of specification options directly below (in the bottom panel). For these figures, which contain all specifications for a given effect, we arranged results by the size of the estimate, so specifications are not necessarily in the same order across all top-level figures. Below, we describe the results in general terms and highlight the specifications for which there is a significiant effect in a table. Next, there are four subsections per effect, one per outcome (total IPV, emotional IPV, controlling IPV, physical IPV). Each subsection is structured the same way as the others, with a two-panel figure showing the estimated effects for each specification (now without arranging by size of the estimate) and a description of the multiverse results shown in the figure. In the case of hypothesis 3 we describe three different effects as if they each belonged to a separate hypothesis, so the structure that we just described is repeated for each the three effects.
 
 ## Effect of Race on Employment (B - W)
+
+All models predict a binary indicator for employment (0 = unemployed, 1 = employed) and include race as the focal independent variable of interest.
 
 ```{r}
 results_emp_race <- comps_results |> 
@@ -161,7 +266,7 @@ results_emp_race <- comps_results |>
     proportion != "binomial"
   ) |> 
   dplyr::mutate(
-    .universe = 1:16
+    order = 1:16
   )
 ```
 
@@ -176,7 +281,7 @@ cowplot::plot_grid(
 )
 ```
 
-Irrespective of our specification, we find a negative effect of race, meaning that black men are less likely to be employed. Analyses that adjust for covariates find a smaller effect of race on employment, indicating that some of the difference in employment rates can be accounted for by the downstream effects of race on the other covariates in the model. Comparing weighted and unweighted models, we find very similar estimates but slightly larger uncertainty for the unweighted models, suggesting that weights are not necessary to reduce the bias of our estimates in this instance.
+Irrespective of our specification, we find a negative effect of race, meaning that Black men are less likely to be employed. Analyses that adjust for covariates find a smaller effect of race on employment, indicating that some of the difference in employment rates can be accounted for by the downstream effects of race on the other covariates in the model. Comparing weighted and unweighted models, we find very similar estimates but slightly larger uncertainty for the unweighted models, suggesting that weights are not necessary to reduce the bias of our estimates in this instance.
 
 Specifications for which there is a significant effect (all of them):
 
@@ -189,11 +294,17 @@ make_table(results_emp_race, only.sig = TRUE, outcome.omit = TRUE)
 
 ## Hypothesis 1: Effect of race on IPV (Black - White)
 
+Specifically, our hypothesis was formulated this way:
+
+> *Compared to White men, Black men are more likely to perpetrate IPV.*
+
+All models predict IPV and include race as the focal independent variable of interest.
+
 ```{r}
 results_ipv_race <- comps_results |> 
   dplyr::filter(comp == "ipv_race") |> 
   dplyr::arrange(estimate) %>% 
-  dplyr::mutate(.universe = 1:nrow(.))
+  dplyr::mutate(order = 1:nrow(.))
 ```
 
 ```{r}
@@ -203,7 +314,7 @@ results_ipv_race <- comps_results |>
 make_plot(results_ipv_race, outcome.omit = FALSE)
 ```
 
-The graph (and table below) reveal that there is some variability in the estimated effect, but all signficant effects are in the same direction: women partnered with Black men report higher levels of IPV.
+The graph (and table below) reveal that there is some variability in the estimated effect, but all significant effects are in the same direction: women partnered with Black men report higher levels of IPV.
 
 Specifications for which there is a significant effect:
 
@@ -219,7 +330,7 @@ make_table(results_ipv_race, only.sig = TRUE, outcome.omit = FALSE)
 ```{r}
 results_ipv_race_total <- comps_results |> 
   dplyr::filter(comp == "ipv_race", outcome == "total") %>% 
-  dplyr::mutate(.universe = 1:nrow(.))
+  dplyr::mutate(order = 1:nrow(.))
 ```
 
 ```{r}
@@ -232,10 +343,11 @@ make_plot(results_ipv_race_total, outcome.omit = TRUE)
 Considering total IPV, all estimated effects are positive (women partnered with Black men report higher IPV), and almost half the estimates are statistically significant. Covariate-adjusted models generally produce smaller estimates, indicating that our covariates account for some of the effects of race on IPV. Weighted models produce similar estimates to the equivalent unweighted models, but the confidence intervals are larger. Whether we use only complete cases or impute missing values doesn't make a noticeable difference in our estimates. Estimates are very similar comparing binomial and linear (continuous) models, whereas models run on a binarized IPV measure show markedly larger estimates and larger uncertainty over all.
 
 ### Emotional IPV
+
 ```{r}
 results_ipv_race_emotional <- comps_results |> 
   dplyr::filter(comp == "ipv_race", outcome == "emotional") %>% 
-  dplyr::mutate(.universe = 1:nrow(.))
+  dplyr::mutate(order = 1:nrow(.))
 ```
 
 ```{r}
@@ -244,13 +356,15 @@ results_ipv_race_emotional <- comps_results |>
 
 make_plot(results_ipv_race_emotional, outcome.omit = TRUE)
 ```
+
 Considering emotional IPV, all estimated effects are positive (women partnered with Black men report higher IPV), and more than half the estimates are statistically significant. Covariate-adjusted models generally produce smaller estimates, indicating that our covariates account for some of the effects of race on IPV. Weighted models produce similar estimates to the equivalent unweighted models, but the confidence intervals are larger --- interestingly, estimates are always slightly larger for unweighted models that treat the outcome as linear or binomial compared to the same model with weights, while they are always slightly smaller for unweighted models that have a binarized outcome compared to the same model with weights. Whether we use only complete cases or impute missing values doesn't make a noticeable difference in our estimates. Estimates are very similar comparing binomial and linear (continuous) models, whereas models run on a binarized IPV measure show markedly larger estimates and larger uncertainty over all, and always produce statistically significant estimates.
 
 ### Controlling IPV
+
 ```{r}
 results_ipv_race_controlling <- comps_results |> 
   dplyr::filter(comp == "ipv_race", outcome == "controlling") %>% 
-  dplyr::mutate(.universe = 1:nrow(.))
+  dplyr::mutate(order = 1:nrow(.))
 ```
 
 ```{r}
@@ -260,14 +374,615 @@ results_ipv_race_controlling <- comps_results |>
 make_plot(results_ipv_race_controlling, outcome.omit = TRUE)
 ```
 
-Only four estimates of the effect of race on controlling IPV are significant, and all come from weighted models. 
+Only four estimates of the effect of race on controlling IPV are significant, and all come from weighted models not adjusted for covariates. These models produce estimates suggesting that Black men perpetrate more controlling IPV, while estimates from all others models hover around zero. In general, estimates from unadjusted models are more positive, and those from covariate-adjusted models are close to zero or, in a few cases, negative. All else equal, we see the same pattern regarding weights, where weighted models relatively more positive estimates with more uncertainty, as compared to the same model without weights. Continuous and binomial models produce similar estimates, while models with a binarized outcome show larger uncertainty and estimates that are further from zero in the same direction as an equivalent linear or binomial model (compare, for example, universes 1--4 with universes 9--12). Besides slightly larger confidence intervals for models run only on complete cases, the method for handling missing data doesn't seem to affect the results much.
 
-## Physical IPV
+### Physical IPV
 
-## Total IPV
+```{r}
+results_ipv_race_physical <- comps_results |> 
+  dplyr::filter(comp == "ipv_race", outcome == "physical") %>% 
+  dplyr::mutate(order = 1:nrow(.))
+```
 
-## Emotional IPV
+```{r}
+#| label: fig-physical-ipv-race
+#| fig-cap: "Effect of Race on physical IPV by Specification"
 
-## Controlling IPV
+make_plot(results_ipv_race_physical, outcome.omit = TRUE)
+```
 
-## Physical IPV
+All estimates for physical IPV are below .03, markedly smaller than for the other subscales. Only three estimated effects are significant, all coming from unweighted models without covariate adjustment and either binomial or binary outcome models. Covariate-adjusted models produce more negative estimates than unadjusted models. Weighted models produce more negative estimates than unweighted models. Binomial models produce similar estimates to linear models, but with a small difference: the weighted binomial models produce estimates with slightly larger and the unweighted slightly smaller than the corresponding linear models. Binary models produce larger effect size estimates (and larger accompanying uncertainty). Across all specifications, the models that are weighted and adjust for covariates produce estimates that are closest to 0. Unlike in the previous breakdowns, for physical IPV there is one estimate that is significant in a complete cases model but not in a model where missing data was imputed, namely for the unadjusted, unweighted, binary model.
+
+## Hypothesis 2: Effect of employment on IPV (Employed - Unemployed)
+
+Specifically, our hypothesis was formulated this way:
+
+> In aggregate across all male partners, unemployment is positively associated with IPV.
+
+All models predict IPV and include race and employment (but not their interaction) as the focal independent variables of interest.
+
+```{r}
+results_ipv_emp <- comps_results |> 
+  dplyr::filter(comp == "ipv_emp") |> 
+  dplyr::arrange(estimate) %>% 
+  dplyr::mutate(order = 1:nrow(.))
+```
+
+```{r}
+#| label: fig-ipv-emp
+#| fig-cap: "Effect of Employment on IPV by Specification"
+
+make_plot(results_ipv_emp, outcome.omit = FALSE)
+```
+
+The graph (and table below) reveal that there is some variability in the estimated effect, but all significant effects are in the same direction: women partnered with employed men report lower levels of IPV.
+
+Specifications for which there is a significant effect:
+
+```{r}
+#| label: tbl-ipv-emp-sig
+#| tbl-cap: "Specifications with a significant effect of employment on IPV"
+
+make_table(results_ipv_emp, only.sig = TRUE, outcome.omit = FALSE)
+```
+
+### Total IPV
+
+```{r}
+results_ipv_emp_total <- comps_results |> 
+  dplyr::filter(comp == "ipv_emp", outcome == "total") %>% 
+  dplyr::mutate(order = 1:nrow(.))
+```
+
+```{r}
+#| label: fig-total-ipv-emp
+#| fig-cap: "Effect of Employment on total IPV by Specification"
+
+make_plot(results_ipv_emp_total, outcome.omit = TRUE)
+```
+
+Regarding the effect of employment on total IPV, exactly one fourth of the estimates are statistically significant, comprising models without weights and without covariate adjustment. All significant estimates suggest that women partnered with employed men experience less IPV. In general, models without covariate adjustment produce more negative estimates, and the only positive estimates come from models with covariate adjustment. Weighted models produce more positive estimates than the corresponding unweighted models, except when the outcome is binary, and the estimates from weighted models always have higher uncertainty. Binary models tend to produce more negative estimates with greater associated uncertainty. The method for handling missing data does not seem to make a practical difference.
+
+### Emotional IPV
+
+```{r}
+results_ipv_emp_emotional <- comps_results |> 
+  dplyr::filter(comp == "ipv_emp", outcome == "emotional") %>% 
+  dplyr::mutate(order = 1:nrow(.))
+```
+
+```{r}
+#| label: fig-emotional-ipv-emp
+#| fig-cap: "Effect of Employment on emotional IPV by Specification"
+
+make_plot(results_ipv_emp_emotional, outcome.omit = TRUE)
+```
+
+Regarding the effect of employment on emotional IPV, only three of the estimates are statistically significant, belonging to models without weights and without covariate adjustment. All significant estimates suggest that women partnered with employed men experience less emotional IPV. In general, models without covariate adjustment produce more negative estimates, and the only positive estimates come from models with covariate adjustment. Weighted models produce more positive estimates than the corresponding unweighted models, except when the outcome is binary, and the estimates from weighted models always have higher uncertainty. Unweighted linear models produce larger confidence intervals than the corresponding binomial models, and none of the estimates from linear models are statistically significant, but otherwise estimates are comparable. Binary models tend to produce more negative estimates with greater associated uncertainty. The method for handling missing data does not seem to make a practical difference, except in the case of the unadjusted, unweighted, binary model, which produces a significant esimate with imputed data but not with complete cases.
+
+### Controlling IPV
+
+```{r}
+results_ipv_emp_controlling <- comps_results |> 
+  dplyr::filter(comp == "ipv_emp", outcome == "controlling") %>% 
+  dplyr::mutate(order = 1:nrow(.))
+```
+
+```{r}
+#| label: fig-controlling-ipv-emp
+#| fig-cap: "Effect of Employment on controlling IPV by Specification"
+
+make_plot(results_ipv_emp_controlling, outcome.omit = TRUE)
+```
+
+Regarding the effect of employment on controlling IPV, exactly one fourth of the estimates are statistically significant, comprising all models without weights and without covariate adjustment. All significant estimates suggest that women partnered with employed men experience less controlling IPV. In general, models without covariate adjustment produce more negative estimates, and the only positive estimates come from models with covariate adjustment. Weighted models produce more positive estimates than the corresponding unweighted models, and the estimates from weighted models always have higher uncertainty. Estimates are comparable between linear and binomial models. Binary models tend to produce more extreme estimates with greater associated uncertainty. The method for handling missing data does not seem to make a practical difference.
+
+### Physical IPV
+
+```{r}
+results_ipv_emp_physical <- comps_results |> 
+  dplyr::filter(comp == "ipv_emp", outcome == "physical") %>% 
+  dplyr::mutate(order = 1:nrow(.))
+```
+
+```{r}
+#| label: fig-physical-ipv-emp
+#| fig-cap: "Effect of Employment on physical IPV by Specification"
+
+make_plot(results_ipv_emp_physical, outcome.omit = TRUE)
+```
+
+Regarding the effect of employment on physical IPV, only four of the estimates are statistically significant, belonging to models without weights and without covariate adjustment. All estimates suggest that women partnered with employed men experience less physical IPV. In general, models without covariate adjustment produce more negative estimates. Weighted models produce very similar estimates as compared to the corresponding unweighted models, but with higher uncertainty. Unweighted linear models produce larger confidence intervals than the corresponding binomial models, but otherwise estimates are comparable. Binary models tend to produce more negative estimates with greater associated uncertainty. The method for handling missing data does not seem to make a practical difference, except in the case of the unadjusted, unweighted, linear and binary models, which produce significant estimates with imputed data but not with complete cases.
+
+## Hypothesis 3: Interaction between race and employment
+
+Specifically, our hypothesis was formulated this way:
+
+> *Employment status is positively consequential to the IPV perpetration of White men, but is unrelated to IPV perpetration among Black men.*
+
+With two sub-hypotheses:
+
+> a\) *White men who are unemployed perpetrate IPV more than White men who are employed.*
+>
+> b\) *Black men who are unemployed do not perpetrate IPV any more or less than Black men who are employed.*
+
+All models predict IPV and include race, employment, and their interaction as the focal independent variables of interest.
+
+### Effect of employment for White men (Employed - Unemployed)
+
+```{r}
+results_ipv_race_emp_white <- comps_results |> 
+  dplyr::filter(term == "W") |> 
+  dplyr::arrange(estimate) %>% 
+  dplyr::mutate(order = 1:nrow(.))
+```
+
+```{r}
+#| label: fig-ipv-race-emp-white
+#| fig-cap: "Effect of Employment on IPV by Specification"
+
+make_plot(results_ipv_race_emp_white, outcome.omit = FALSE)
+```
+
+The graph (and table below) reveal that there is some variability in the estimated effect, but all significant effects are in the same direction: for women partnered with white men, those partnered with employed men report lower levels of IPV.
+
+Specifications for which there is a significant effect:
+
+```{r}
+#| label: tbl-ipv-race-emp-white-sig
+#| tbl-cap: "Specifications with a significant effect of employment on IPV"
+
+make_table(results_ipv_race_emp_white, only.sig = TRUE, outcome.omit = FALSE)
+```
+
+#### Total IPV
+
+```{r}
+results_ipv_race_emp_white_total <- comps_results |> 
+  dplyr::filter(term == "W", outcome == "total") %>% 
+  dplyr::mutate(order = 1:nrow(.))
+```
+
+```{r}
+#| label: fig-total-ipv-race-emp-white
+#| fig-cap: "Effect of Employment on total IPV for white men by Specification"
+
+make_plot(results_ipv_race_emp_white_total, outcome.omit = TRUE)
+```
+
+Looking at the effect of employment on IPV for white men, we find almost all estimates in the negative direction (being employed is associated with less IPV), and one fourth of the estimates are statistically significant. In general, models without covariate adjustment produce more negative estimates. Weighted models produce very similar estimates as compared to the corresponding unweighted models, but with higher uncertainty. Unweighted linear models produce larger confidence intervals than the corresponding binomial models, but otherwise estimates are comparable. Binary models produce more negative estimates with greater associated uncertainty. The method for handling missing data does not seem to make a practical difference.
+
+#### Emotional IPV
+
+```{r}
+results_ipv_race_emp_white_emotional <- comps_results |> 
+  dplyr::filter(term == "W", outcome == "emotional") %>% 
+  dplyr::mutate(order = 1:nrow(.))
+```
+
+```{r}
+#| label: fig-emotional-ipv-race-emp-white
+#| fig-cap: "Effect of Employment on emotional IPV for white men by Specification"
+
+make_plot(results_ipv_race_emp_white_emotional, outcome.omit = TRUE)
+```
+
+Looking at the effect of employment on emotional IPV for white men, we find almost all estimates in the negative direction (being employed is associated with less IPV), and four of the estimates are statistically significant. In general, models without covariate adjustment produce more negative estimates. Weighted models produce very similar estimates as compared to the corresponding unweighted models, but with higher uncertainty, except for the binary models, for which the weighted models show more negative estimates. Unweighted linear models produce larger confidence intervals than the corresponding binomial models, but otherwise estimates are comparable. Binary models produce more negative estimates with greater associated uncertainty. The method for handling missing data does not seem to make a practical difference.
+
+#### Controlling IPV
+
+```{r}
+results_ipv_race_emp_white_controlling <- comps_results |> 
+  dplyr::filter(term == "W", outcome == "controlling") %>% 
+  dplyr::mutate(order = 1:nrow(.))
+```
+
+```{r}
+#| label: fig-controlling-ipv-race-emp-white
+#| fig-cap: "Effect of Employment on controlling IPV for white men by Specification"
+
+make_plot(results_ipv_race_emp_white_controlling, outcome.omit = TRUE)
+```
+
+Looking at the effect of employment on controlling IPV for white men, we find almost all estimates in the negative direction (being employed is associated with less IPV), and four of the estimates are statistically significant. In general, models without covariate adjustment produce more negative estimates. Weighted models produce very similar estimates as compared to the corresponding unweighted models, but with higher uncertainty, except for the binary models, for which the weighted models show more positive estimates. Unweighted linear models produce larger confidence intervals than the corresponding binomial models, but otherwise estimates are comparable. Binary models produce more negative estimates with greater associated uncertainty. The method for handling missing data does not seem to make a practical difference.
+
+#### Physical IPV
+
+```{r}
+results_ipv_race_emp_white_physical <- comps_results |> 
+  dplyr::filter(term == "W", outcome == "physical") %>% 
+  dplyr::mutate(order = 1:nrow(.))
+```
+
+```{r}
+#| label: fig-physical-ipv-race-emp-white
+#| fig-cap: "Effect of Employment on physical IPV for white men by Specification"
+
+make_plot(results_ipv_race_emp_white_physical, outcome.omit = TRUE)
+```
+
+Looking at the effect of employment on physical IPV for white men, we find all estimates in the negative direction (being employed is associated with less IPV), and two of the estimates are statistically significant (belonging to the two unadjusted, unweighted, binomial models). In general, models without covariate adjustment produce more negative estimates. Weighted models produce slightly more positive estimates as compared to the corresponding unweighted models, but with higher uncertainty. Unweighted linear models produce larger confidence intervals than the corresponding binomial models, but otherwise estimates are comparable. Binary models produce more negative estimates with greater associated uncertainty. The method for handling missing data does not seem to make a practical difference.
+
+### Effect of employment for Black men (Employed - Unemployed)
+
+```{r}
+results_ipv_race_emp_black <- comps_results |> 
+  dplyr::filter(term == "B") |> 
+  dplyr::arrange(estimate) %>% 
+  dplyr::mutate(order = 1:nrow(.))
+```
+
+```{r}
+#| label: fig-ipv-race-emp-black
+#| fig-cap: "Effect of Employment on IPV by Specification"
+
+make_plot(results_ipv_race_emp_black, outcome.omit = FALSE)
+```
+
+The graph (and table below) reveal that there is variability in the estimated effect, with few significant effects in the both directions: for women partnered with black men, those partnered with employed men are found to report lower or higher levels of IPV, depending on the specification. Notably, all negative significant estimates are from models without covariate adjustment, while all the positive significant effects are from models with covariate adjustment.
+
+Specifications for which there is a significant effect:
+
+```{r}
+#| label: tbl-ipv-race-emp-black-sig
+#| tbl-cap: "Specifications with a significant effect of employment on IPV"
+
+make_table(results_ipv_race_emp_black, only.sig = TRUE, outcome.omit = FALSE)
+```
+
+#### Total IPV
+
+```{r}
+results_ipv_race_emp_black_total <- comps_results |> 
+  dplyr::filter(term == "B", outcome == "total") %>% 
+  dplyr::mutate(order = 1:nrow(.))
+```
+
+```{r}
+#| label: fig-total-ipv-race-emp-black
+#| fig-cap: "Effect of Employment on total IPV for black men by Specification"
+
+make_plot(results_ipv_race_emp_black_total, outcome.omit = TRUE)
+```
+
+Looking at the effect of employment on IPV for black men, we find most estimates in the positive direction (being employed is associated with more IPV), and just three of the estimates are statistically significant (one positive, two negative). In general, models without covariate adjustment produce more negative estimates. Weighted models tend to produce slightly more positive estimates as compared to the corresponding unweighted models, but with higher uncertainty. Unweighted linear models produce larger confidence intervals than the corresponding binomial models, but otherwise estimates are comparable. Binary models produce more positive estimates with greater associated uncertainty. The method for handling missing data does not seem to make a practical difference, except that the estimate from the adjusted, unweighted, binomial model is significant when using imputed data but not when using complete cases.
+
+#### Emotional IPV
+
+```{r}
+results_ipv_race_emp_black_emotional <- comps_results |> 
+  dplyr::filter(term == "B", outcome == "emotional") %>% 
+  dplyr::mutate(order = 1:nrow(.))
+```
+
+```{r}
+#| label: fig-emotional-ipv-race-emp-black
+#| fig-cap: "Effect of Employment on emotional IPV for black men by Specification"
+
+make_plot(results_ipv_race_emp_black_emotional, outcome.omit = TRUE)
+```
+
+Looking at the effect of employment on emotional IPV for black men, we find most estimates in the positive direction (being employed is associated with more IPV), and just two of the estimates are statistically significant (both positive). In general, models without covariate adjustment produce more negative estimates. Weighted models tend to produce slightly more positive estimates as compared to the corresponding unweighted models, but with higher uncertainty. Unweighted linear models produce larger confidence intervals than the corresponding binomial models, but otherwise estimates are comparable. Binary models tend to produce more positive estimates with greater associated uncertainty. The method for handling missing data does not seem to make a practical difference.
+
+#### Controlling IPV
+
+```{r}
+results_ipv_race_emp_black_controlling <- comps_results |> 
+  dplyr::filter(term == "B", outcome == "controlling") %>% 
+  dplyr::mutate(order = 1:nrow(.))
+```
+
+```{r}
+#| label: fig-controlling-ipv-race-emp-black
+#| fig-cap: "Effect of Employment on controlling IPV for black men by Specification"
+
+make_plot(results_ipv_race_emp_black_controlling, outcome.omit = TRUE)
+```
+
+Looking at the effect of employment on controlling IPV for black men, we find estimates in the both directions, five of which are statistically significant (all negative - suggesting black men who are employed perpetrate less controlling IPV). In general, models without covariate adjustment produce more negative estimates. Weighted models produce more positive estimates as compared to the corresponding unweighted models, but with higher uncertainty. Unweighted linear models produce larger confidence intervals than the corresponding binomial models, but otherwise estimates are comparable. Binary models produce more extreme estimates with greater associated uncertainty. The method for handling missing data does not seem to make a practical difference, except that the estimate from the adjusted, unweighted, binary model is significant when using imputed data but not when using complete cases.
+
+#### Physical IPV
+
+```{r}
+results_ipv_race_emp_black_physical <- comps_results |> 
+  dplyr::filter(term == "B", outcome == "physical") %>% 
+  dplyr::mutate(order = 1:nrow(.))
+```
+
+```{r}
+#| label: fig-physical-ipv-race-emp-black
+#| fig-cap: "Effect of Employment on physical IPV for black men by Specification"
+
+make_plot(results_ipv_race_emp_black_physical, outcome.omit = TRUE)
+```
+
+Looking at the effect of employment on physical IPV for black men, we find almost all estimates in the negative direction (being employed is associated with less IPV), and two of the estimates are statistically significant (belonging to the two unadjusted, unweighted, binomial models). In general, models without covariate adjustment produce more negative estimates. Weighted models produce slightly more positive estimates as compared to the corresponding unweighted models, but with higher uncertainty. Unweighted linear models produce larger confidence intervals than the corresponding binomial models, but otherwise estimates are comparable. Binary models produce more negative estimates only when there's no covariate adjustment, and always with greater associated uncertainty. The method for handling missing data does not seem to make a practical difference.
+
+### Interaction effect (White Employed - White Unemployed) - (Black Employed - Black Unemployed)
+
+```{r}
+results_ipv_race_emp_interaction <- comps_results |> 
+  dplyr::filter(term == "W - B") |> 
+  dplyr::arrange(estimate) %>% 
+  dplyr::mutate(order = 1:nrow(.))
+```
+
+```{r}
+#| label: fig-ipv-race-emp-interaction
+#| fig-cap: "Interaction effect by Specification"
+
+make_plot(results_ipv_race_emp_interaction, outcome.omit = FALSE)
+```
+
+The graph (and table below) reveal that there is some variability in the estimated effect, but almost all estimates are negative, and all significant estimates are negative.
+
+::: {#nte-interaction .callout-note}
+## What does a negative interaction effect mean?
+
+Our interaction effect is a difference between two effects. Specifically, we compare the effect of employment for White men to the effect of employment for Black men. Below, we calculate the interaction effect step by step to better illustrate what it represents. For this example, we use results from the model reported in the manuscript, namely a linear model with weights, covariate adjustment, and imputed data.
+
+\(1\) Effect of employment for White men: W-Employed - W-Unemployed = -0.003
+
+\(2\) Effect of employment for Black men: B-Employed - B-Unemployed = 0.023
+
+\(3\) = (1) - (2) Interaction effect: (W-Employed - W-Unemployed) - (B-Employed - B-Unemployed) = -0.003 - 0.023 = -0.026.
+
+Thus, a positive interaction effect means that the effect of employment is larger for White men than for Black men, and a negative interaction effect means that the effect of employment is smaller for White men than for Black men. Here, "larger" and "smaller" are always relative and not absolute — e.g., if both effects are negative (say, -0.5 and -1), then the "larger" one is -0.5, which is smaller in an absolute sense.
+:::
+
+Specifications for which there is a significant effect:
+
+```{r}
+#| label: tbl-ipv-race-emp-interaction-sig
+#| tbl-cap: "Specifications with a significant effect of employment on IPV"
+
+make_table(results_ipv_race_emp_interaction, only.sig = TRUE, outcome.omit = FALSE)
+```
+
+#### Total IPV
+
+```{r}
+results_ipv_race_emp_interaction_total <- comps_results |> 
+  dplyr::filter(term == "W - B", outcome == "total") %>% 
+  dplyr::mutate(order = 1:nrow(.))
+```
+
+```{r}
+#| label: fig-total-ipv-race-emp-interaction
+#| fig-cap: "Effect of Employment on total IPV for interaction men by Specification"
+
+make_plot(results_ipv_race_emp_interaction_total, outcome.omit = TRUE)
+```
+
+Looking at the interaction effect for total IPV, we find all estimates in the negative direction (implying a more negative effect of employment for White men compared to Black men), one fourth of them being statistically significant. Models without covariate adjustment sometimes produce more positive and other times more negative estimates. Weighted models tend to produce estimates similar to those from the corresponding unweighted models, but with higher uncertainty. Unweighted linear models produce larger confidence intervals than the corresponding binomial models, but otherwise estimates are comparable. Binary models produce more negative estimates with greater associated uncertainty. The method for handling missing data does not seem to make a practical difference.
+
+#### Emotional IPV
+
+```{r}
+results_ipv_race_emp_interaction_emotional <- comps_results |> 
+  dplyr::filter(term == "W - B", outcome == "emotional") %>% 
+  dplyr::mutate(order = 1:nrow(.))
+```
+
+```{r}
+#| label: fig-emotional-ipv-race-emp-interaction
+#| fig-cap: "Interaction effect on emotional IPV by Specification"
+
+make_plot(results_ipv_race_emp_interaction_emotional, outcome.omit = TRUE)
+```
+
+Looking at the interaction effect for emotional IPV, we find all estimates in the negative direction (implying a more negative effect of employment for White men compared to Black men), with just one statistically significant estimate (from a covariate-adjusted, unweighted, binomial model with imputed data). Models without covariate adjustment sometimes produce more positive and other times more negative estimates. Weighted models tend to produce estimates similar to those from the corresponding unweighted models, but with higher uncertainty, except for binary models, which produce markedly more negative estimates when weighted. Unweighted linear models produce larger confidence intervals than the corresponding binomial models, but otherwise estimates are comparable. Binary models produce more negative estimates with greater associated uncertainty. The method for handling missing data does not seem to make a practical difference.
+
+#### Controlling IPV
+
+```{r}
+results_ipv_race_emp_interaction_controlling <- comps_results |> 
+  dplyr::filter(term == "W - B", outcome == "controlling") %>% 
+  dplyr::mutate(order = 1:nrow(.))
+```
+
+```{r}
+#| label: fig-controlling-ipv-race-emp-interaction
+#| fig-cap: "Effect of Employment on controlling IPV for interaction men by Specification"
+
+make_plot(results_ipv_race_emp_interaction_controlling, outcome.omit = TRUE)
+```
+
+Looking at the interaction effect for controlling IPV, we find all estimates in the negative direction (implying a more negative effect of employment for White men compared to Black men), but none are statistically significant. Models without covariate adjustment sometimes produce more positive and other times more negative estimates. Weighted models tend to produce more negative estimates as compared to those from the corresponding unweighted models, but with higher uncertainty. Unweighted linear models produce larger confidence intervals than the corresponding binomial models, but otherwise estimates are comparable. Binary models produce more negative estimates with greater associated uncertainty. The method for handling missing data does not seem to make a practical difference.
+
+#### Physical IPV
+
+```{r}
+results_ipv_race_emp_interaction_physical <- comps_results |> 
+  dplyr::filter(term == "W - B", outcome == "physical") %>% 
+  dplyr::mutate(order = 1:nrow(.))
+```
+
+```{r}
+#| label: fig-physical-ipv-race-emp-interaction
+#| fig-cap: "Effect of Employment on physical IPV for interaction men by Specification"
+
+make_plot(results_ipv_race_emp_interaction_physical, outcome.omit = TRUE)
+```
+
+Looking at the interaction effect for physical IPV, we find about half of the estimates in the negative direction (implying a more negative effect of employment for White men compared to Black men) and half in the positive direction, none being statistically significant. Models without covariate adjustment tend to produce more positive estimates than those with adjustment. Weighted models tend to produce estimates similar to those from the corresponding unweighted models, but with higher uncertainty, except for binary models, which produce slightly more positive estimates when weighted. Unweighted linear models produce larger confidence intervals than the corresponding binomial models, but otherwise estimates are comparable. Binary models produce more negative estimates with greater associated uncertainty. The method for handling missing data does not seem to make a practical difference.
+
+# Supplementary tables
+
+## Effect of race on Employment (Black - White)
+
+```{r}
+results_emp_race |> 
+  dplyr::select(
+    universe = .universe,
+    names(m_params),
+    estimate, p.value
+  ) |> 
+  dplyr::mutate(
+    inference = dplyr::case_when(
+      p.value >= .05 ~ "No difference",
+      p.value < .05 & estimate > 0 ~ "Black more likely employed",
+      p.value < .05 & estimate < 0 ~ "White more likely employed"
+    )
+  ) |> 
+  dplyr::rename_with(
+    .fn = ~ paste0("Specification option.", .x),
+    .cols = -c(universe, estimate, p.value, inference)
+  ) %>%
+  rempsyc::nice_table(
+    note = "* p < .05, ** p < .01, *** p < .001",
+    separate.header = TRUE, italics = seq(.),
+   col.format.custom = 7, format.custom = "format.fun"
+  ) 
+```
+
+## Effect of race on IPV (Black - White)
+
+All specifications, focusing on the inference about the direction of the effect:
+
+```{r}
+results_ipv_race |> 
+  dplyr::select(
+    universe = .universe,
+    names(m_params),
+    estimate, p.value
+  ) |> 
+  dplyr::mutate(
+    inference = dplyr::case_when(
+      p.value >= .05 ~ "No difference",
+      p.value < .05 & estimate > 0 ~ "Black higher IPV",
+      p.value < .05 & estimate < 0 ~ "White higher IPV"
+    )
+  ) |> 
+  dplyr::rename_with(
+    .fn = ~ paste0("Specification option.", .x),
+    .cols = -c(universe, estimate, p.value, inference)
+  ) %>%
+  rempsyc::nice_table(
+    note = "* p < .05, ** p < .01, *** p < .001",
+    separate.header = TRUE, italics = seq(.),
+   col.format.custom = 7, format.custom = "format.fun"
+  ) 
+```
+
+## Effect of Employment on IPV (Employed - Unemployed)
+
+All specifications, focusing on the inference about the direction of the effect:
+
+```{r}
+results_ipv_emp |> 
+  dplyr::select(
+    universe = .universe,
+    names(m_params),
+    estimate, p.value
+  ) |> 
+  dplyr::mutate(
+    inference = dplyr::case_when(
+      p.value >= .05 ~ "No difference",
+      p.value < .05 & estimate > 0 ~ "Employed higher IPV",
+      p.value < .05 & estimate < 0 ~ "Unemployed higher IPV"
+    )
+  ) |> 
+  dplyr::rename_with(
+    .fn = ~ paste0("Specification option.", .x),
+    .cols = -c(universe, estimate, p.value, inference)
+  ) %>%
+  rempsyc::nice_table(
+    note = "* p < .05, ** p < .01, *** p < .001",
+    separate.header = TRUE, italics = seq(.),
+   col.format.custom = 7, format.custom = "format.fun"
+  ) 
+```
+
+## Race and Employment on IPV
+
+### White (Employed - Unemployed)
+
+All specifications, focusing on the inference about the direction of the effect:
+
+```{r}
+results_ipv_race_emp_white |> 
+  dplyr::select(
+    universe = .universe,
+    names(m_params),
+    estimate, p.value
+  ) |> 
+  dplyr::mutate(
+    inference = dplyr::case_when(
+      p.value >= .05 ~ "No difference",
+      p.value < .05 & estimate > 0 ~ "Employed higher IPV",
+      p.value < .05 & estimate < 0 ~ "Unemployed higher IPV"
+    )
+  ) |> 
+  dplyr::rename_with(
+    .fn = ~ paste0("Specification option.", .x),
+    .cols = -c(universe, estimate, p.value, inference)
+  ) %>%
+  rempsyc::nice_table(
+    note = "* p < .05, ** p < .01, *** p < .001",
+    separate.header = TRUE, italics = seq(.),
+   col.format.custom = 7, format.custom = "format.fun"
+  ) 
+```
+
+### Black (Employed - Unemployed)
+
+All specifications, focusing on the inference about the direction of the effect:
+
+```{r}
+results_ipv_race_emp_black |> 
+  dplyr::select(
+    universe = .universe,
+    names(m_params),
+    estimate, p.value
+  ) |> 
+  dplyr::mutate(
+    inference = dplyr::case_when(
+      p.value >= .05 ~ "No difference",
+      p.value < .05 & estimate > 0 ~ "Employed higher IPV",
+      p.value < .05 & estimate < 0 ~ "Unemployed higher IPV"
+    )
+  ) |> 
+  dplyr::rename_with(
+    .fn = ~ paste0("Specification option.", .x),
+    .cols = -c(universe, estimate, p.value, inference)
+  ) %>%
+  rempsyc::nice_table(
+    note = "* p < .05, ** p < .01, *** p < .001",
+    separate.header = TRUE, italics = seq(.),
+   col.format.custom = 7, format.custom = "format.fun"
+  ) 
+```
+
+### Interaction (White (Emp - Unemp) - Black (Emp - Unemp))
+
+All specifications, focusing on the inference about the direction of the effect:
+
+(Reminder for interpretation: a "positive" interaction means that the difference "Employed - Unemployed" is larger for White men; a "negative" interaction means that that same difference is larger for Black men)
+
+```{r}
+results_ipv_race_emp_interaction |> 
+  dplyr::select(
+    universe = .universe,
+    names(m_params),
+    estimate, p.value
+  ) |> 
+  dplyr::mutate(
+    inference = dplyr::case_when(
+      p.value >= .05 ~ "No difference",
+      p.value < .05 & estimate > 0 ~ "Effect more positive for White men",
+      p.value < .05 & estimate < 0 ~ "Effect more positive for Black men"
+    )
+  ) |> 
+  dplyr::rename_with(
+    .fn = ~ paste0("Specification option.", .x),
+    .cols = -c(universe, estimate, p.value, inference)
+  ) %>%
+  rempsyc::nice_table(
+    note = "* p < .05, ** p < .01, *** p < .001",
+    separate.header = TRUE, italics = seq(.),
+   col.format.custom = 7, format.custom = "format.fun"
+  ) 
+```
+
+# References
