@@ -357,7 +357,7 @@ results_ipv_race_emotional <- comps_results |>
 make_plot(results_ipv_race_emotional, outcome.omit = TRUE)
 ```
 
-Considering emotional IPV, all estimated effects are positive (women partnered with Black men report higher IPV), and more than half the estimates are statistically significant. Covariate-adjusted models generally produce smaller estimates, indicating that our covariates account for some of the effects of race on IPV. Weighted models produce similar estimates to the equivalent unweighted models, but the confidence intervals are larger --- interestingly, estimates are always slightly larger for unweighted models that treat the outcome as linear or binomial compared to the same model with weights, while they are always slightly smaller for unweighted models that have a binarized outcome compared to the same model with weights. Whether we use only complete cases or impute missing values doesn't make a noticeable difference in our estimates. Estimates are very similar comparing binomial and linear (continuous) models, whereas models run on a binarized IPV measure show markedly larger estimates and larger uncertainty over all, and always produce statistically significant estimates.
+Considering emotional IPV, all estimated effects are positive (women partnered with Black men report higher IPV), and more than half the estimates are statistically significant. Covariate-adjusted models generally produce smaller estimates, indicating that our covariates account for some of the effects of race on IPV. Weighted models produce similar estimates to the equivalent unweighted models, but the confidence intervals are larger — interestingly, estimates are always slightly larger for unweighted models that treat the outcome as linear or binomial compared to the same model with weights, while they are always slightly smaller for unweighted models that have a binarized outcome compared to the same model with weights. Whether we use only complete cases or impute missing values doesn't make a noticeable difference in our estimates. Estimates are very similar comparing binomial and linear (continuous) models, whereas models run on a binarized IPV measure show markedly larger estimates and larger uncertainty over all, and always produce statistically significant estimates.
 
 ### Controlling IPV
 
@@ -810,6 +810,8 @@ Looking at the interaction effect for physical IPV, we find about half of the es
 # Supplementary tables
 
 ## Effect of race on Employment (Black - White)
+
+All specifications, focusing on the inference about the direction of the effect:
 
 ```{r}
 results_emp_race |> 
